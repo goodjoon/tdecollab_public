@@ -35,10 +35,14 @@ export function registerConfluenceCommands(program: Command) {
         .description('페이지 조회')
         .option('-r, --raw', 'Raw Storage Format 출력')
         .option('-q, --quiet', '메타데이터 생략')
+        .option('-d, --download-images', '이미지 다운로드')
+        .option('--image-dir <path>', '이미지 저장 디렉토리', './images')
+        .option('-o, --output <file>', 'Markdown을 파일로 저장')
         .action(async (pageId, options) => {
             const client = initClient();
             const api = new ConfluenceContentApi(client);
-            const storageToMd = new StorageToMarkdownConverter();
+            const config = loadConfluenceConfig();
+
             try {
                 const page = await api.getPage(pageId);
 
@@ -49,20 +53,47 @@ export function registerConfluenceCommands(program: Command) {
                     console.log(`URL: ${page._links?.base}${page._links?.webui}`);
                 }
 
+                let content = '';
+
                 if (options.raw) {
                     if (!options.quiet) console.log(chalk.dim('--- Content (Storage Format) ---'));
                     if (page.body?.storage?.value) {
-                        console.log(page.body.storage.value);
+                        content = page.body.storage.value;
                     } else {
                         if (!options.quiet) console.log(chalk.yellow('(No content)'));
                     }
                 } else {
                     if (!options.quiet) console.log(chalk.dim('--- Content (Markdown) ---'));
                     if (page.body?.storage?.value) {
-                        console.log(storageToMd.convert(page.body.storage.value));
+                        let imageUrlMap: Map<string, string> | undefined;
+
+                        // 이미지 다운로드 옵션이 활성화된 경우
+                        if (options.downloadImages) {
+                            const { ImageDownloader } = await import('../utils/image-downloader.js');
+                            const downloader = new ImageDownloader(api, {
+                                outputDir: path.resolve(process.cwd(), options.imageDir),
+                                pageId: page.id,
+                                baseUrl: config.baseUrl
+                            });
+
+                            console.log(chalk.blue('이미지 다운로드 중...'));
+                            imageUrlMap = await downloader.downloadAllImages(page.body.storage.value);
+                        }
+
+                        const storageToMd = new StorageToMarkdownConverter();
+                        content = storageToMd.convert(page.body.storage.value, imageUrlMap);
                     } else {
                         if (!options.quiet) console.log(chalk.yellow('(No content)'));
                     }
+                }
+
+                // 파일로 저장 또는 콘솔 출력
+                if (options.output) {
+                    const outputPath = path.resolve(process.cwd(), options.output);
+                    fs.writeFileSync(outputPath, content, 'utf-8');
+                    console.log(chalk.green(`파일 저장 완료: ${outputPath}`));
+                } else {
+                    console.log(content);
                 }
             } catch (e: any) {
                 console.error(chalk.red(`Error: ${e.message}`));

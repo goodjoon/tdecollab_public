@@ -1,5 +1,6 @@
 import { AxiosInstance } from 'axios';
-import { ConfluencePageResponse, CreatePageParams, UpdatePageParams, ConfluenceLabel } from '../types.js';
+import { ConfluencePageResponse, CreatePageParams, UpdatePageParams, ConfluenceLabel, ConfluenceAttachmentResponse } from '../types.js';
+
 
 export class ConfluenceContentApi {
     constructor(private client: AxiosInstance) { }
@@ -97,5 +98,23 @@ export class ConfluenceContentApi {
     private async addLabels(id: string, labels: string[]): Promise<void> {
         const data = labels.map(name => ({ prefix: 'global', name }));
         await this.client.post(`/rest/api/content/${id}/label`, data);
+    }
+
+    // Attachment 관련 메서드
+    async getAttachments(pageId: string, filename?: string): Promise<ConfluenceAttachmentResponse[]> {
+        const response = await this.client.get(`/rest/api/content/${pageId}/child/attachment`, {
+            params: {
+                filename,
+                expand: 'version'
+            }
+        });
+        return response.data.results;
+    }
+
+    async downloadAttachment(downloadUrl: string): Promise<Buffer> {
+        const response = await this.client.get(downloadUrl, {
+            responseType: 'arraybuffer'
+        });
+        return Buffer.from(response.data);
     }
 }

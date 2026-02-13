@@ -30,16 +30,39 @@ export function registerConfluenceTools(server: McpServer) {
             'TDE Confluence 페이지 상세 조회. 페이지 내용을 Markdown으로 변환하여 반환합니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
+                downloadImages: z.boolean().optional().describe('이미지 다운로드 여부'),
+                imageDir: z.string().optional().describe('이미지 저장 디렉토리 (기본값: ./images)'),
             },
-            async ({ pageId }) => {
+            async ({ pageId, downloadImages, imageDir }) => {
                 const page = await contentApi.getPage(pageId);
-                const md = page.body?.storage?.value ? storageToMd.convert(page.body.storage.value) : '';
+
+                let md = '';
+                let imageInfo = '';
+
+                if (page.body?.storage?.value) {
+                    let imageUrlMap: Map<string, string> | undefined;
+
+                    // 이미지 다운로드 옵션이 활성화된 경우
+                    if (downloadImages) {
+                        const { ImageDownloader } = await import('../utils/image-downloader.js');
+                        const downloader = new ImageDownloader(contentApi, {
+                            outputDir: imageDir || './images',
+                            pageId: page.id,
+                            baseUrl: config.baseUrl
+                        });
+
+                        imageUrlMap = await downloader.downloadAllImages(page.body.storage.value);
+                        imageInfo = `\n\n다운로드된 이미지: ${imageUrlMap.size}개`;
+                    }
+
+                    md = storageToMd.convert(page.body.storage.value, imageUrlMap);
+                }
 
                 return {
                     content: [
                         {
                             type: 'text',
-                            text: `Title: ${page.title}\nID: ${page.id}\nSpace: ${page.space?.name} (${page.space?.key})\nURL: ${page._links?.base}${page._links?.webui}\n\n${md}`,
+                            text: `Title: ${page.title}\nID: ${page.id}\nSpace: ${page.space?.name} (${page.space?.key})\nURL: ${page._links?.base}${page._links?.webui}${imageInfo}\n\n${md}`,
                         },
                     ],
                 };

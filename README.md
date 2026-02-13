@@ -99,6 +99,12 @@ tdecollab confluence page get <pageId> --raw          # Storage Format 출력
 tdecollab confluence page get <pageId> --quiet        # 메타데이터 생략
 tdecollab confluence page get <pageId> --raw --quiet > page.html
 
+# 이미지 다운로드와 함께 페이지 조회
+tdecollab confluence page get <pageId> --download-images                    # 이미지를 ./images에 다운로드
+tdecollab confluence page get <pageId> -d --image-dir ./my-images          # 커스텀 디렉토리에 다운로드
+tdecollab confluence page get <pageId> -d -o page.md                       # Markdown 파일로 저장
+tdecollab confluence page get <pageId> -d --image-dir ./assets -o page.md  # 이미지와 함께 저장
+
 # 페이지 생성
 tdecollab confluence page create --space <key> --title <title> --content "Markdown 내용"
 tdecollab confluence page create --space <key> --title <title> --file <path>

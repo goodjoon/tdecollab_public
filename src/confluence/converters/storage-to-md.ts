@@ -1,5 +1,5 @@
 export class StorageToMarkdownConverter {
-    convert(storageHtml: string): string {
+    convert(storageHtml: string, imageUrlMap?: Map<string, string>): string {
         // Simple implementation for now.
         // In a real scenario, we would use a proper HTML parser like cheerio or jsdom, 
         // or TurndownService.
@@ -8,6 +8,44 @@ export class StorageToMarkdownConverter {
         let md = storageHtml;
 
         // Remove storage specific wrapper if any (usually not needed if just fragment)
+
+        // 이미지 변환 (imageUrlMap이 제공된 경우 로컬 경로로 변환)
+        if (imageUrlMap && imageUrlMap.size > 0) {
+            imageUrlMap.forEach((localPath, originalTag) => {
+                // 파일명에서 alt text 생성
+                const filename = localPath.split('/').pop() || 'image';
+                const altText = filename.replace(/\.[^.]+$/, ''); // 확장자 제거
+                const markdownImage = `![${altText}](${localPath})`;
+                md = md.replace(originalTag, markdownImage);
+            });
+        }
+
+        // 남은 이미지 태그 처리 (다운로드하지 않은 경우)
+        // ac:image with attachment
+        md = md.replace(
+            /<ac:image[^>]*>[\s\S]*?<ri:attachment\s+ri:filename="([^"]+)"[\s\S]*?<\/ac:image>/g,
+            (match, filename) => {
+                return `![${filename}](attachment:${filename})`;
+            }
+        );
+
+        // ac:image with URL
+        md = md.replace(
+            /<ac:image[^>]*>[\s\S]*?<ri:url\s+ri:value="([^"]+)"[\s\S]*?<\/ac:image>/g,
+            (match, url) => {
+                const filename = url.split('/').pop() || 'image';
+                return `![${filename}](${url})`;
+            }
+        );
+
+        // 일반 img 태그
+        md = md.replace(
+            /<img\s+[^>]*src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*\/?>/g,
+            (match, src, alt) => {
+                const altText = alt || src.split('/').pop() || 'image';
+                return `![${altText}](${src})`;
+            }
+        );
 
         // Code Macro -> Markdown Code Block
         // Structure: <ac:structured-macro ac:name="code">...<ac:parameter ac:name="language">lang</ac:parameter>...<ac:plain-text-body><![CDATA[code]]></ac:plain-text-body></ac:structured-macro>

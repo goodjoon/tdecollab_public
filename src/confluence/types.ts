@@ -91,3 +91,25 @@ export enum PageStatus {
     TRASHED = 'trashed',
     DRAFT = 'draft',
 }
+
+export interface ConfluenceAttachmentResponse {
+    id: string;
+    type: string;
+    title: string;
+    metadata: {
+        mediaType: string;
+        fileSize?: number;
+        comment?: string;
+    };
+    extensions: {
+        mediaType: string;
+        fileSize: number;
+    };
+    _links: {
+        base?: string;
+        context?: string;
+        download: string;
+        webui?: string;
+        self: string;
+    };
+}
