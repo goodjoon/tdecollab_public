@@ -27,7 +27,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_get_page',
-            'Confluence 페이지 상세 조회 (Markdown 변환 포함)',
+            'TDE Confluence 페이지 상세 조회. 페이지 내용을 Markdown으로 변환하여 반환합니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
             },
@@ -48,7 +48,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_create_page',
-            'Confluence 페이지 생성',
+            'TDE Confluence에 새 페이지를 생성합니다. Markdown 형식의 내용을 Confluence Storage Format으로 자동 변환합니다.',
             {
                 spaceKey: z.string().describe('스페이스 키'),
                 title: z.string().describe('페이지 제목'),
@@ -79,7 +79,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_update_page',
-            'Confluence 페이지 수정',
+            'TDE Confluence 페이지를 수정합니다. Markdown 형식의 내용으로 업데이트할 수 있습니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
                 title: z.string().describe('페이지 제목'),
@@ -108,7 +108,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_search_pages',
-            'Confluence 페이지 검색 (CQL)',
+            'TDE Confluence에서 페이지를 검색합니다. CQL(Confluence Query Language)을 사용하여 고급 검색이 가능합니다.',
             {
                 cql: z.string().describe('Confluence Query Language (예: title ~ "guide")'),
                 limit: z.number().default(10).describe('결과 개수 제한'),
@@ -130,7 +130,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_get_spaces',
-            'Confluence 스페이스 목록 조회',
+            'TDE Confluence의 스페이스 목록을 조회합니다.',
             {
                 limit: z.number().default(20).describe('결과 개수 제한')
             },
@@ -145,7 +145,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_delete_page',
-            'Confluence 페이지 삭제',
+            'TDE Confluence 페이지를 삭제합니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
             },
@@ -164,7 +164,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_get_page_tree',
-            'Confluence 페이지 트리 (자식 페이지) 조회',
+            'TDE Confluence 페이지의 하위 페이지(자식 페이지) 목록을 조회합니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
                 limit: z.number().default(20).describe('결과 개수 제한'),
@@ -185,7 +185,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_manage_labels',
-            'Confluence 라벨 관리',
+            'TDE Confluence 페이지의 라벨을 관리합니다. 라벨 조회, 추가, 삭제 기능을 제공합니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
                 action: z.enum(['list', 'add', 'remove']).describe('작업 유형'),
@@ -222,7 +222,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         server.tool(
             'confluence_convert_content',
-            'Confluence 컨텐츠 포맷 변환 (Markdown ↔ Storage)',
+            'TDE Confluence 컨텐츠 포맷을 변환합니다. Markdown과 Confluence Storage Format 간 양방향 변환을 지원합니다.',
             {
                 content: z.string().describe('변환할 컨텐츠'),
                 format: z.enum(['storage_to_markdown', 'markdown_to_storage']).describe('변환 방향'),

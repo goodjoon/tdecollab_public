@@ -9,6 +9,7 @@ export async function runServer() {
         const server = new McpServer({
             name: 'TDE Collab',
             version: '1.0.0',
+            description: 'TDE 포털(Confluence, JIRA, GitLab) 통합 도구. TDE Confluence 페이지 관리, 검색, 편집 기능을 제공합니다.',
         });
 
         // Confluence 도구 등록
