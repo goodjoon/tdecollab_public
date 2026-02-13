@@ -54,14 +54,22 @@ export class ImageDownloader {
 
         // 3. 일반 img 태그
         // <img src="https://example.com/image.png" alt="description" />
-        const imgRegex = /<img\s+[^>]*src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*\/?>/g;
+        const imgRegex = /<img\s+[^>]*\/?>/g;
         while ((match = imgRegex.exec(html)) !== null) {
-            references.push({
-                type: 'url',
-                url: match[1],
-                originalTag: match[0],
-                altText: match[2] || '',
-            });
+            const imgTag = match[0];
+            // src 추출
+            const srcMatch = /src="([^"]+)"/.exec(imgTag);
+            // alt 추출
+            const altMatch = /alt="([^"]*)"/.exec(imgTag);
+
+            if (srcMatch) {
+                references.push({
+                    type: 'url',
+                    url: srcMatch[1],
+                    originalTag: imgTag,
+                    altText: altMatch ? altMatch[1] : '',
+                });
+            }
         }
 
         return references;

@@ -48,4 +48,76 @@ describe('ConfluenceContentApi', () => {
         expect(mock.history.post.length).toBe(2);
         expect(mock.history.post[1].url).toBe('/rest/api/content/456/label');
     });
+
+    describe('Attachment methods', () => {
+        it('getAttachments should return attachment list', async () => {
+            const pageId = '123';
+            const mockAttachments = {
+                results: [
+                    {
+                        id: 'att1',
+                        type: 'attachment',
+                        title: 'image.png',
+                        metadata: { mediaType: 'image/png' },
+                        extensions: { mediaType: 'image/png', fileSize: 1024 },
+                        _links: { download: '/download/attachments/123/image.png' }
+                    }
+                ]
+            };
+
+            mock.onGet(`/rest/api/content/${pageId}/child/attachment`)
+                .reply(200, mockAttachments);
+
+            const result = await api.getAttachments(pageId);
+            expect(result).toEqual(mockAttachments.results);
+            expect(result[0].title).toBe('image.png');
+        });
+
+        it('getAttachments with filename should filter by filename', async () => {
+            const pageId = '123';
+            const filename = 'specific.png';
+            const mockAttachments = {
+                results: [
+                    {
+                        id: 'att1',
+                        type: 'attachment',
+                        title: filename,
+                        metadata: { mediaType: 'image/png' },
+                        extensions: { mediaType: 'image/png', fileSize: 2048 },
+                        _links: { download: '/download/attachments/123/specific.png' }
+                    }
+                ]
+            };
+
+            mock.onGet(`/rest/api/content/${pageId}/child/attachment`, {
+                params: { filename, expand: 'version' }
+            }).reply(200, mockAttachments);
+
+            const result = await api.getAttachments(pageId, filename);
+            expect(result).toEqual(mockAttachments.results);
+            expect(result[0].title).toBe(filename);
+        });
+
+        it('downloadAttachment should return buffer', async () => {
+            const downloadUrl = 'https://confluence.example.com/download/attachments/123/image.png';
+            const mockImageData = Buffer.from('fake-image-data');
+
+            mock.onGet(downloadUrl).reply(200, mockImageData);
+
+            const result = await api.downloadAttachment(downloadUrl);
+            expect(result).toBeInstanceOf(Buffer);
+            expect(result.toString()).toBe('fake-image-data');
+        });
+
+        it('downloadAttachment should handle binary data', async () => {
+            const downloadUrl = '/download/attachments/123/image.png';
+            const binaryData = Buffer.from([0x89, 0x50, 0x4E, 0x47]); // PNG header
+
+            mock.onGet(downloadUrl).reply(200, binaryData);
+
+            const result = await api.downloadAttachment(downloadUrl);
+            expect(result).toBeInstanceOf(Buffer);
+            expect(result.length).toBe(4);
+        });
+    });
 });

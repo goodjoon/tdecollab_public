@@ -40,10 +40,17 @@ export class StorageToMarkdownConverter {
 
         // 일반 img 태그
         md = md.replace(
-            /<img\s+[^>]*src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*\/?>/g,
-            (match, src, alt) => {
-                const altText = alt || src.split('/').pop() || 'image';
-                return `![${altText}](${src})`;
+            /<img\s+[^>]*\/?>/g,
+            (match) => {
+                const srcMatch = /src="([^"]+)"/.exec(match);
+                const altMatch = /alt="([^"]*)"/.exec(match);
+
+                if (srcMatch) {
+                    const src = srcMatch[1];
+                    const altText = altMatch ? altMatch[1] : (src.split('/').pop() || 'image');
+                    return `![${altText}](${src})`;
+                }
+                return match;
             }
         );
 
