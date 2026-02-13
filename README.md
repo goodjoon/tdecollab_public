@@ -17,76 +17,180 @@ tdecollab은 TDE 포털에서 제공하는 협업 도구들을 하나의 CLI와 
 ## 요구사항
 
 - Node.js 20 이상
-- pnpm
 
 ## 설치
 
+### npm에서 설치 (권장)
+
 ```bash
+# 전역 설치
+npm install -g tdecollab
+
+# 또는 npx로 즉시 실행 (설치 불필요)
+npx -y tdecollab --help
+```
+
+### 소스에서 빌드 (개발자용)
+
+```bash
+git clone <repository-url>
+cd tdecollab
 pnpm install
 pnpm build
 ```
 
 ## 설정
 
-`.env.example`을 `.env`로 복사한 후 각 서비스의 인증 정보를 입력합니다.
-
-```bash
-cp .env.example .env
-```
-
 ### 환경변수
 
+tdecollab은 다음 환경변수를 통해 각 서비스에 접속합니다:
+
 ```env
-# Confluence
-CONFLUENCE_BASE_URL=https://confluence.tde.sktelecom.com
-CONFLUENCE_EMAIL=사번@sktelecom.com
+# Confluence (현재 지원)
+CONFLUENCE_BASE_URL=https://confluence.example.com
+CONFLUENCE_USERNAME=your-username  # Basic Auth 사용 시 (선택)
 CONFLUENCE_API_TOKEN=your-api-token
 
-# JIRA
-JIRA_BASE_URL=https://jira.tde.sktelecom.com
-JIRA_EMAIL=사번@sktelecom.com
+# JIRA (개발 예정)
+JIRA_BASE_URL=https://jira.example.com
+JIRA_USERNAME=your-username
 JIRA_API_TOKEN=your-api-token
 
-# GitLab
-GITLAB_BASE_URL=https://gitlab.tde.sktelecom.com
+# GitLab (개발 예정)
+GITLAB_BASE_URL=https://gitlab.example.com
 GITLAB_PRIVATE_TOKEN=your-private-token
 ```
 
-## 사용법
+### 설정 방법
 
-### CLI
+**방법 1: .env 파일 사용 (로컬 개발)**
 
 ```bash
-# Confluence
-tdecollab confluence page get <pageId>
-tdecollab confluence page create --space <key> --title <title> --file <path>
-tdecollab confluence search <query>
-
-# JIRA
-tdecollab jira issue get <issueKey>
-tdecollab jira search <jql>
-tdecollab jira issue transition <issueKey> --to <status>
-
-# GitLab
-tdecollab gitlab mr list <projectId> --state opened
-tdecollab gitlab pipeline get <projectId> <pipelineId>
+# 프로젝트 루트에 .env 파일 생성
+echo "CONFLUENCE_BASE_URL=https://confluence.example.com" > .env
+echo "CONFLUENCE_API_TOKEN=your-token" >> .env
 ```
 
-### MCP 서버
+**방법 2: 환경변수 직접 설정**
 
-Claude Desktop 또는 Claude Code에서 MCP 서버로 연동하여 사용할 수 있습니다.
+```bash
+export CONFLUENCE_BASE_URL=https://confluence.example.com
+export CONFLUENCE_API_TOKEN=your-token
+tdecollab confluence space list
+```
+
+**방법 3: MCP 서버 설정에 포함 (Claude Desktop)**
+
+Claude Desktop 설정 파일의 `env` 섹션에 환경변수를 추가합니다 (아래 MCP 서버 섹션 참조).
+
+## 사용법
+
+### CLI 명령어
+
+#### Confluence (현재 지원)
+
+```bash
+# 스페이스 목록 조회
+tdecollab confluence space list
+
+# 페이지 조회
+tdecollab confluence page get <pageId>
+tdecollab confluence page get <pageId> --raw          # Storage Format 출력
+tdecollab confluence page get <pageId> --quiet        # 메타데이터 생략
+tdecollab confluence page get <pageId> --raw --quiet > page.html
+
+# 페이지 생성
+tdecollab confluence page create --space <key> --title <title> --content "Markdown 내용"
+tdecollab confluence page create --space <key> --title <title> --file <path>
+
+# 페이지 검색 (CQL)
+tdecollab confluence search "title ~ 'guide'"
+tdecollab confluence search "space = MYSPACE AND type = page"
+```
+
+#### JIRA (개발 예정)
+
+```bash
+tdecollab jira issue get <issueKey>
+tdecollab jira search <jql>
+```
+
+#### GitLab (개발 예정)
+
+```bash
+tdecollab gitlab mr list <projectId>
+```
+
+### MCP 서버 (Claude Desktop 연동)
+
+Claude Desktop에서 Confluence 도구를 사용할 수 있습니다.
+
+#### 설정 파일 위치
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+#### npx 사용 (권장)
+
+별도 설치 없이 최신 버전을 자동으로 실행합니다:
 
 ```json
 {
   "mcpServers": {
     "tdecollab": {
-      "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/path/to/tdecollab"
+      "command": "npx",
+      "args": ["-y", "tdecollab", "mcp"],
+      "env": {
+        "CONFLUENCE_BASE_URL": "https://confluence.example.com",
+        "CONFLUENCE_USERNAME": "your-username",
+        "CONFLUENCE_API_TOKEN": "your-api-token"
+      }
     }
   }
 }
 ```
+
+#### 전역 설치 사용
+
+```bash
+npm install -g tdecollab
+```
+
+```json
+{
+  "mcpServers": {
+    "tdecollab": {
+      "command": "tdecollab",
+      "args": ["mcp"],
+      "env": {
+        "CONFLUENCE_BASE_URL": "https://confluence.example.com",
+        "CONFLUENCE_USERNAME": "your-username",
+        "CONFLUENCE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+#### 로컬 개발 버전 사용
+
+```json
+{
+  "mcpServers": {
+    "tdecollab-dev": {
+      "command": "node",
+      "args": ["/absolute/path/to/tdecollab/dist/index.js"],
+      "env": {
+        "CONFLUENCE_BASE_URL": "https://confluence.example.com",
+        "CONFLUENCE_USERNAME": "your-username",
+        "CONFLUENCE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+설정 후 Claude Desktop을 재시작하면 Confluence 도구를 사용할 수 있습니다.
 
 ## 개발
 

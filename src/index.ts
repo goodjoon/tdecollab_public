@@ -1,6 +1,8 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+#!/usr/bin/env node
+import { runServer } from './mcp/server.js';
 
-// TODO: Implement MCP Server
-console.error('MCP Server is not yet implemented.');
-process.exit(1);
+
+runServer().catch((error) => {
+    console.error('Fatal error in MCP Server entry point:', error);
+    process.exit(1);
+});

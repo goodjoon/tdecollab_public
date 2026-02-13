@@ -143,6 +143,103 @@ export function registerConfluenceTools(server: McpServer) {
             }
         );
 
+        server.tool(
+            'confluence_delete_page',
+            'Confluence 페이지 삭제',
+            {
+                pageId: z.string().describe('페이지 ID'),
+            },
+            async ({ pageId }) => {
+                await contentApi.deletePage(pageId);
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `페이지 삭제 성공 (ID: ${pageId})`,
+                        },
+                    ],
+                };
+            }
+        );
+
+        server.tool(
+            'confluence_get_page_tree',
+            'Confluence 페이지 트리 (자식 페이지) 조회',
+            {
+                pageId: z.string().describe('페이지 ID'),
+                limit: z.number().default(20).describe('결과 개수 제한'),
+            },
+            async ({ pageId, limit }) => {
+                const children = await contentApi.getChildPages(pageId, 0, limit);
+                const summary = children.map(p => `- [${p.id}] ${p.title}`).join('\n');
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `자식 페이지 목록 (${children.length}):\n${summary}`,
+                        },
+                    ],
+                };
+            }
+        );
+
+        server.tool(
+            'confluence_manage_labels',
+            'Confluence 라벨 관리',
+            {
+                pageId: z.string().describe('페이지 ID'),
+                action: z.enum(['list', 'add', 'remove']).describe('작업 유형'),
+                labels: z.array(z.string()).optional().describe('추가할 라벨 목록 (add 작업 시 필수)'),
+                label: z.string().optional().describe('삭제할 라벨 (remove 작업 시 필수)'),
+            },
+            async ({ pageId, action, labels, label }) => {
+                if (action === 'list') {
+                    const result = await labelApi.getLabels(pageId);
+                    const summary = result.map(l => l.name).join(', ');
+                    return {
+                        content: [{ type: 'text', text: `라벨 목록: ${summary}` }],
+                    };
+                } else if (action === 'add') {
+                    if (!labels || labels.length === 0) {
+                        throw new Error('라벨 목록을 입력해주세요.');
+                    }
+                    await labelApi.addLabels(pageId, labels);
+                    return {
+                        content: [{ type: 'text', text: `라벨 추가 성공: ${labels.join(', ')}` }],
+                    };
+                } else if (action === 'remove') {
+                    if (!label) {
+                        throw new Error('삭제할 라벨을 입력해주세요.');
+                    }
+                    await labelApi.removeLabel(pageId, label);
+                    return {
+                        content: [{ type: 'text', text: `라벨 삭제 성공: ${label}` }],
+                    };
+                }
+                return { content: [] };
+            }
+        );
+
+        server.tool(
+            'confluence_convert_content',
+            'Confluence 컨텐츠 포맷 변환 (Markdown ↔ Storage)',
+            {
+                content: z.string().describe('변환할 컨텐츠'),
+                format: z.enum(['storage_to_markdown', 'markdown_to_storage']).describe('변환 방향'),
+            },
+            async ({ content, format }) => {
+                let result = '';
+                if (format === 'storage_to_markdown') {
+                    result = storageToMd.convert(content);
+                } else {
+                    result = mdToStorage.convert(content);
+                }
+                return {
+                    content: [{ type: 'text', text: result }],
+                };
+            }
+        );
+
     } catch (error) {
         logger.warn(`Confluence 설정 로드 실패 또는 도구 등록 중 오류 발생: ${(error as Error).message}`);
         // Do not throw, just skip registration if config is missing (optional module pattern)

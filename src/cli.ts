@@ -16,4 +16,12 @@ program
 // Register module commands
 registerConfluenceCommands(program);
 
+program
+    .command('mcp')
+    .description('Run MCP Server')
+    .action(async () => {
+        const { runServer } = await import('./mcp/server.js');
+        await runServer();
+    });
+
 program.parse(process.argv);

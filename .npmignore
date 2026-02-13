@@ -1,0 +1,41 @@
+
+# Security / Sensitivity
+.env
+.env.*
+*.key
+*.pem
+*.secret
+
+# Source & Config
+src/
+test/
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+.eslintrc.js
+.prettierrc
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# AI Agents
+.cursorrules
+.clinerules
+.windsurfrules
+.codeium/
+.ai/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
