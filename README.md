@@ -169,9 +169,51 @@ tdecollab gitlab file get <projectId> <filePath> [--ref <ref>]
 tdecollab gitlab file tree <projectId> [--path <dir>] [--ref <ref>] [--recursive]
 ```
 
+### MCP 도구 목록
+
+MCP 서버를 통해 AI 에이전트(Claude 등)에서 사용할 수 있는 도구입니다.
+
+#### Confluence (9개)
+
+| 도구 | 설명 |
+|------|------|
+| `confluence_get_page` | 페이지 상세 조회 (Markdown 변환) |
+| `confluence_create_page` | 새 페이지 생성 (Markdown → Storage Format 자동 변환) |
+| `confluence_update_page` | 페이지 수정 |
+| `confluence_delete_page` | 페이지 삭제 |
+| `confluence_search_pages` | CQL로 페이지 검색 |
+| `confluence_get_spaces` | 스페이스 목록 조회 |
+| `confluence_get_page_tree` | 하위 페이지(자식 페이지) 목록 조회 |
+| `confluence_manage_labels` | 페이지 라벨 조회/추가/삭제 |
+| `confluence_convert_content` | Markdown ↔ Storage Format 양방향 변환 |
+
+#### JIRA (7개)
+
+| 도구 | 설명 |
+|------|------|
+| `jira_get_issue` | 이슈 상세 조회 |
+| `jira_create_issue` | 새 이슈 생성 |
+| `jira_update_issue` | 이슈 수정 |
+| `jira_search_issues` | JQL로 이슈 검색 |
+| `jira_transition_issue` | 이슈 상태 변경 (트랜지션 조회/실행) |
+| `jira_manage_comments` | 코멘트 조회/추가/수정/삭제 |
+| `jira_get_projects` | 프로젝트/보드/스프린트 조회 |
+
+#### GitLab (7개)
+
+| 도구 | 설명 |
+|------|------|
+| `gitlab_get_project` | 프로젝트 목록 또는 상세 조회 |
+| `gitlab_get_merge_request` | MR 목록 또는 상세 조회 (변경 파일 포함 가능) |
+| `gitlab_create_merge_request` | 새 Merge Request 생성 |
+| `gitlab_manage_merge_request` | MR 머지/닫기/재열기/코멘트 추가 |
+| `gitlab_get_pipelines` | 파이프라인 목록 또는 상세 조회 (Job 포함 가능) |
+| `gitlab_manage_branches` | 브랜치 목록/상세/생성/삭제 |
+| `gitlab_get_file` | 파일 내용 또는 디렉토리 트리 조회 |
+
 ### MCP 서버 (Claude Desktop 연동)
 
-Claude Desktop에서 Confluence 도구를 사용할 수 있습니다.
+Claude Desktop에서 Confluence, JIRA, GitLab 도구를 사용할 수 있습니다.
 
 #### 설정 파일 위치
 
