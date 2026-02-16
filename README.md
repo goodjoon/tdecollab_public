@@ -46,18 +46,18 @@ pnpm build
 tdecollab은 다음 환경변수를 통해 각 서비스에 접속합니다:
 
 ```env
-# Confluence (현재 지원)
+# Confluence
 CONFLUENCE_BASE_URL=https://confluence.example.com
 CONFLUENCE_USERNAME=your-username  # Basic Auth 사용 시 (선택)
 CONFLUENCE_API_TOKEN=your-api-token
 
-# JIRA (개발 예정)
+# JIRA
 JIRA_BASE_URL=https://jira.example.com
-JIRA_USERNAME=your-username
+JIRA_USERNAME=your-username         # PAT 사용 시 생략 가능 (선택)
 JIRA_API_TOKEN=your-api-token
 
-# GitLab (개발 예정)
-GITLAB_BASE_URL=https://gitlab.example.com
+# GitLab
+GITLAB_BASE_URL=https://gitlab.example.com   # 미설정 시 https://gitlab.com
 GITLAB_PRIVATE_TOKEN=your-private-token
 ```
 
@@ -87,7 +87,7 @@ Claude Desktop 설정 파일의 `env` 섹션에 환경변수를 추가합니다 
 
 ### CLI 명령어
 
-#### Confluence (현재 지원)
+#### Confluence
 
 ```bash
 # 스페이스 목록 조회
@@ -114,17 +114,59 @@ tdecollab confluence search "title ~ 'guide'"
 tdecollab confluence search "space = MYSPACE AND type = page"
 ```
 
-#### JIRA (개발 예정)
+#### JIRA
 
 ```bash
-tdecollab jira issue get <issueKey>
-tdecollab jira search <jql>
+# 이슈 관리
+tdecollab jira issue get <issueKey>                      # 이슈 상세 조회
+tdecollab jira issue create -p PROJ -s "제목" -t Task     # 이슈 생성
+tdecollab jira issue update <issueKey> -s "새 제목"       # 이슈 수정
+tdecollab jira issue transition <issueKey> -l             # 가능한 트랜지션 조회
+tdecollab jira issue transition <issueKey> -t <id>        # 트랜지션 실행
+
+# JQL 검색
+tdecollab jira search "project = PROJ AND status = Open"
+tdecollab jira search "assignee = currentUser()" -n 50
+
+# 코멘트 관리
+tdecollab jira comment list <issueKey>
+tdecollab jira comment add <issueKey> "코멘트 내용"
+
+# 프로젝트/보드
+tdecollab jira project list
+tdecollab jira project get <projectKey>
+tdecollab jira board list [-p <projectKey>]
+tdecollab jira board sprints <boardId> [-s active]
 ```
 
-#### GitLab (개발 예정)
+#### GitLab
 
 ```bash
-tdecollab gitlab mr list <projectId>
+# 프로젝트
+tdecollab gitlab project list [--search <query>] [--owned] [--membership]
+tdecollab gitlab project get <projectId>
+
+# Merge Request
+tdecollab gitlab mr list <projectId> [-s opened|closed|merged|all]
+tdecollab gitlab mr get <projectId> <mrIid> [--changes]
+tdecollab gitlab mr create <projectId> --source <branch> --target <branch> --title <text>
+tdecollab gitlab mr merge <projectId> <mrIid> [--squash] [--remove-source-branch]
+tdecollab gitlab mr close <projectId> <mrIid>
+tdecollab gitlab mr comment <projectId> <mrIid> -b "코멘트 내용"
+
+# 파이프라인
+tdecollab gitlab pipeline list <projectId> [--status <status>] [--ref <branch>]
+tdecollab gitlab pipeline get <projectId> <pipelineId> [--jobs]
+
+# 브랜치
+tdecollab gitlab branch list <projectId> [--search <query>]
+tdecollab gitlab branch get <projectId> <branchName>
+tdecollab gitlab branch create <projectId> --name <branch> --ref <ref>
+tdecollab gitlab branch delete <projectId> <branchName>
+
+# 파일/저장소
+tdecollab gitlab file get <projectId> <filePath> [--ref <ref>]
+tdecollab gitlab file tree <projectId> [--path <dir>] [--ref <ref>] [--recursive]
 ```
 
 ### MCP 서버 (Claude Desktop 연동)
@@ -149,7 +191,11 @@ Claude Desktop에서 Confluence 도구를 사용할 수 있습니다.
       "env": {
         "CONFLUENCE_BASE_URL": "https://confluence.example.com",
         "CONFLUENCE_USERNAME": "your-username",
-        "CONFLUENCE_API_TOKEN": "your-api-token"
+        "CONFLUENCE_API_TOKEN": "your-api-token",
+        "JIRA_BASE_URL": "https://jira.example.com",
+        "JIRA_API_TOKEN": "your-jira-token",
+        "GITLAB_BASE_URL": "https://gitlab.example.com",
+        "GITLAB_PRIVATE_TOKEN": "your-gitlab-token"
       }
     }
   }
@@ -171,7 +217,11 @@ npm install -g tdecollab
       "env": {
         "CONFLUENCE_BASE_URL": "https://confluence.example.com",
         "CONFLUENCE_USERNAME": "your-username",
-        "CONFLUENCE_API_TOKEN": "your-api-token"
+        "CONFLUENCE_API_TOKEN": "your-api-token",
+        "JIRA_BASE_URL": "https://jira.example.com",
+        "JIRA_API_TOKEN": "your-jira-token",
+        "GITLAB_BASE_URL": "https://gitlab.example.com",
+        "GITLAB_PRIVATE_TOKEN": "your-gitlab-token"
       }
     }
   }
@@ -189,14 +239,18 @@ npm install -g tdecollab
       "env": {
         "CONFLUENCE_BASE_URL": "https://confluence.example.com",
         "CONFLUENCE_USERNAME": "your-username",
-        "CONFLUENCE_API_TOKEN": "your-api-token"
+        "CONFLUENCE_API_TOKEN": "your-api-token",
+        "JIRA_BASE_URL": "https://jira.example.com",
+        "JIRA_API_TOKEN": "your-jira-token",
+        "GITLAB_BASE_URL": "https://gitlab.example.com",
+        "GITLAB_PRIVATE_TOKEN": "your-gitlab-token"
       }
     }
   }
 }
 ```
 
-설정 후 Claude Desktop을 재시작하면 Confluence 도구를 사용할 수 있습니다.
+설정 후 Claude Desktop을 재시작하면 Confluence, JIRA, GitLab 도구를 사용할 수 있습니다.
 
 ## 개발
 
