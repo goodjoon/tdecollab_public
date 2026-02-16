@@ -125,51 +125,51 @@
 
 ### 3-1. API 클라이언트 레이어
 
-- [ ] `src/jira/types.ts` - JIRA 전용 타입
+- [x] `src/jira/types.ts` - JIRA 전용 타입
   - Issue, Project, Transition, Comment, Board, Sprint 인터페이스
-- [ ] `src/jira/api/client.ts` - JIRA API 클라이언트 초기화
-- [ ] `src/jira/api/issue.ts` - 이슈 CRUD API
+- [x] `src/jira/api/client.ts` - JIRA API 클라이언트 초기화
+- [x] `src/jira/api/issue.ts` - 이슈 CRUD API
   - getIssue(issueKey, fields?, expand?)
   - createIssue(projectKey, issueType, summary, fields?)
   - updateIssue(issueKey, fields?, update?)
   - deleteIssue(issueKey, deleteSubtasks?)
-- [ ] `src/jira/api/search.ts` - JQL 검색 API
+- [x] `src/jira/api/search.ts` - JQL 검색 API
   - searchByJql(jql, startAt?, maxResults?, fields?)
-- [ ] `src/jira/api/transition.ts` - 트랜지션 API
+- [x] `src/jira/api/transition.ts` - 트랜지션 API
   - getTransitions(issueKey)
   - doTransition(issueKey, transitionId, fields?)
-- [ ] `src/jira/api/comment.ts` - 코멘트 API
+- [x] `src/jira/api/comment.ts` - 코멘트 API
   - getComments(issueKey, startAt?, maxResults?)
   - addComment(issueKey, body)
   - updateComment(issueKey, commentId, body)
   - deleteComment(issueKey, commentId)
-- [ ] `src/jira/api/project.ts` - 프로젝트/보드 API
+- [x] `src/jira/api/project.ts` - 프로젝트/보드 API
   - getProjects()
   - getProject(projectKey)
   - getBoards(projectKey?, type?)
   - getSprints(boardId, state?)
-- [ ] JIRA API 테스트 작성
+- [x] JIRA API 테스트 작성
 
 ### 3-2. MCP 도구
 
-- [ ] `src/jira/tools/index.ts` - 도구 일괄 등록 (registerJiraTools)
-- [ ] 개별 도구 구현 (7개)
-  - [ ] jira_get_issue
-  - [ ] jira_create_issue
-  - [ ] jira_update_issue
-  - [ ] jira_search_issues
-  - [ ] jira_transition_issue
-  - [ ] jira_manage_comments
-  - [ ] jira_get_projects
+- [x] `src/jira/tools/index.ts` - 도구 일괄 등록 (registerJiraTools)
+- [x] 개별 도구 구현 (7개)
+  - [x] jira_get_issue
+  - [x] jira_create_issue
+  - [x] jira_update_issue
+  - [x] jira_search_issues
+  - [x] jira_transition_issue
+  - [x] jira_manage_comments
+  - [x] jira_get_projects
 
 ### 3-3. CLI 커맨드
 
-- [ ] `src/jira/commands/index.ts` - JIRA CLI 서브커맨드 등록
-- [ ] issue 커맨드 (get, create, update, transition, transitions)
-- [ ] search 커맨드
-- [ ] comment 커맨드 (list, add, update, delete)
-- [ ] project 커맨드 (list, get)
-- [ ] board 커맨드 (list, sprints)
+- [x] `src/jira/commands/index.ts` - JIRA CLI 서브커맨드 등록
+- [x] issue 커맨드 (get, create, update, transition, transitions)
+- [x] search 커맨드
+- [x] comment 커맨드 (list, add, update, delete)
+- [x] project 커맨드 (list, get)
+- [x] board 커맨드 (list, sprints)
 
 ---
 
@@ -231,13 +231,14 @@
 
 ## Phase 5: MCP 서버 통합
 
-- [ ] `src/mcp/server.ts` - McpServer 인스턴스 생성, 메타데이터 설정
-- [ ] `src/mcp/transport.ts` - StdioServerTransport 설정
+- [x] `src/mcp/server.ts` - McpServer 인스턴스 생성, 메타데이터 설정
+  - Confluence + JIRA 도구 등록 완료
+- [ ] `src/mcp/transport.ts` - StdioServerTransport 설정 (현재 server.ts에 포함)
 - [ ] `src/mcp/tool-registry.ts` - 3개 모듈의 도구 일괄 등록
-  - registerConfluenceTools(server)
-  - registerJiraTools(server)
-  - registerGitlabTools(server)
-- [ ] `src/index.ts` - MCP 서버 엔트리포인트 (dotenv 로드 → 서버 생성 → 도구 등록 → transport 연결)
+  - [x] registerConfluenceTools(server)
+  - [x] registerJiraTools(server)
+  - [ ] registerGitlabTools(server)
+- [x] `src/index.ts` - MCP 서버 엔트리포인트 (dotenv 로드 → 서버 생성 → 도구 등록 → transport 연결)
 - [ ] MCP 서버 통합 테스트
   - stdio transport 기반 요청/응답 테스트
   - 도구 목록 조회 테스트
@@ -247,13 +248,14 @@
 
 ## Phase 6: CLI 통합
 
-- [ ] `src/cli.ts` - commander 기반 통합 CLI 엔트리포인트
+- [x] `src/cli.ts` - commander 기반 통합 CLI 엔트리포인트
   - dotenv 로드
-  - 서비스별 서브커맨드 등록: confluence, jira, gitlab
-  - config 서브커맨드 (설정 확인/인증 테스트)
-  - 글로벌 옵션: --json (JSON 출력), --verbose (디버그 로그)
-- [ ] 각 서비스 commands/index.ts에서 서브커맨드 등록
-- [ ] CLI 출력 포매팅 (chalk 컬러, cli-table3 테이블)
+  - [x] 서비스별 서브커맨드 등록: confluence, jira
+  - [ ] gitlab 서브커맨드 등록
+  - [ ] config 서브커맨드 (설정 확인/인증 테스트)
+  - [ ] 글로벌 옵션: --json (JSON 출력), --verbose (디버그 로그)
+- [x] 각 서비스 commands/index.ts에서 서브커맨드 등록 (confluence, jira)
+- [x] CLI 출력 포매팅 (chalk 컬러, cli-table3 테이블)
 - [ ] CLI 통합 테스트
 
 ---

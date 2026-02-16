@@ -46,6 +46,7 @@ describe('Config Loader', () => {
 
     describe('loadGitlabConfig', () => {
         it('should load valid config with default base url', () => {
+            delete process.env.GITLAB_BASE_URL;
             process.env.GITLAB_PRIVATE_TOKEN = 'glpat-secret';
 
             const config = loadGitlabConfig();

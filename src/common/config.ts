@@ -34,7 +34,8 @@ export function loadConfluenceConfig(): ConfluenceConfig {
 // JIRA 설정 로드
 export function loadJiraConfig(): JiraConfig {
     const baseUrl = getEnvOrThrow('JIRA_BASE_URL', 'JIRA 기본 URL');
-    const username = getEnvOrThrow('JIRA_USERNAME', 'JIRA 사용자 이메일');
+    // Username은 선택값 (PAT 사용 시 불필요)
+    const username = process.env.JIRA_USERNAME;
     const token = getEnvOrThrow('JIRA_API_TOKEN', 'JIRA API 토큰');
 
     return {

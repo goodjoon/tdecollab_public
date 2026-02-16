@@ -7,7 +7,9 @@
       "WebFetch(domain:docs.gitlab.com)",
       "Bash(git init:*)",
       "Bash(git branch:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:run:*)"
     ]
   }
 }

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { registerConfluenceCommands } from './confluence/commands/index.js';
+import { registerJiraCommands } from './jira/commands/index.js';
+import { registerGitlabCommands } from './gitlab/commands/index.js';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -15,6 +17,8 @@ program
 
 // Register module commands
 registerConfluenceCommands(program);
+registerJiraCommands(program);
+registerGitlabCommands(program);
 
 program
     .command('mcp')
