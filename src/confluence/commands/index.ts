@@ -70,14 +70,27 @@ export function registerConfluenceCommands(program: Command) {
                         // 이미지 다운로드 옵션이 활성화된 경우
                         if (options.downloadImages) {
                             const { ImageDownloader } = await import('../utils/image-downloader.js');
+                            let baseDir = process.cwd();
+                            if (options.output) {
+                                baseDir = path.dirname(path.resolve(process.cwd(), options.output));
+                            }
+
+                            const imgDir = path.resolve(baseDir, options.imageDir);
                             const downloader = new ImageDownloader(api, {
-                                outputDir: path.resolve(process.cwd(), options.imageDir),
+                                outputDir: imgDir,
                                 pageId: page.id,
                                 baseUrl: config.baseUrl
                             });
 
                             console.log(chalk.blue('이미지 다운로드 중...'));
                             imageUrlMap = await downloader.downloadAllImages(page.body.storage.value);
+
+                            // 절대 경로를 baseDir 기준 상대 경로로 변환 (Markdown url 경로용)
+                            for (const [key, absolutePath] of imageUrlMap.entries()) {
+                                let relPath = path.relative(baseDir, absolutePath);
+                                relPath = relPath.split(path.sep).join('/'); // URL 구분자 통일
+                                imageUrlMap.set(key, relPath);
+                            }
                         }
 
                         const storageToMd = new StorageToMarkdownConverter();
@@ -114,10 +127,12 @@ export function registerConfluenceCommands(program: Command) {
 
             try {
                 let markdownContent = '';
+                let markdownDirPath = process.cwd();
 
                 if (options.file) {
                     try {
                         const filePath = path.resolve(process.cwd(), options.file);
+                        markdownDirPath = path.dirname(filePath);
                         markdownContent = fs.readFileSync(filePath, 'utf-8');
                     } catch (e: any) {
                         console.error(chalk.red(`파일 읽기 실패: ${e.message}`));
@@ -138,8 +153,114 @@ export function registerConfluenceCommands(program: Command) {
                 });
                 console.log(chalk.green(`페이지 생성 완료: ${page.title} (ID: ${page.id})`));
                 console.log(`URL: ${page._links?.base}${page._links?.webui}`);
+
+                // 로컬 이미지 첨부파일 업로드 처리
+                if (options.file) {
+                    const localImages = mdToStorage.extractLocalImages(markdownContent);
+                    if (localImages.length > 0) {
+                        console.log(chalk.blue(`로컬 이미지 첨부파일 업로드 시작 (${localImages.length}개)...`));
+                        for (const imgSrc of localImages) {
+                            try {
+                                const imagePath = path.resolve(markdownDirPath, imgSrc);
+                                if (fs.existsSync(imagePath)) {
+                                    const fileBuffer = fs.readFileSync(imagePath);
+                                    const filename = path.basename(imgSrc);
+                                    let contentType = 'application/octet-stream';
+                                    if (filename.endsWith('.png')) contentType = 'image/png';
+                                    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+                                    else if (filename.endsWith('.svg')) contentType = 'image/svg+xml';
+                                    else if (filename.endsWith('.gif')) contentType = 'image/gif';
+
+                                    await api.uploadAttachment(page.id, filename, fileBuffer, contentType);
+                                    console.log(chalk.green(`  - 업로드 완료: ${filename}`));
+                                } else {
+                                    console.error(chalk.yellow(`  - 이미지 파일을 찾을 수 없습니다: ${imagePath}`));
+                                }
+                            } catch (uploadErr: any) {
+                                console.error(chalk.red(`  - 업로드 실패 (${imgSrc}): ${uploadErr.message}`));
+                            }
+                        }
+                    }
+                }
             } catch (e: any) {
                 console.error(chalk.red(`생성 실패: ${e.message}`));
+            }
+        });
+
+    pageCmd.command('update <pageId>')
+        .description('페이지 내용 업데이트')
+        .option('-t, --title <title>', '변경할 제목 (생략 시 기존 제목 유지)')
+        .option('-c, --content <content>', '내용 (Markdown 텍스트)')
+        .option('-f, --file <path>', '내용 파일 경로 (Markdown)')
+        .action(async (pageId, options) => {
+            const client = initClient();
+            const api = new ConfluenceContentApi(client);
+            const mdToStorage = new MarkdownToStorageConverter();
+
+            try {
+                const currentPage = await api.getPage(pageId, ['version', 'title']);
+                const currentVersion = currentPage.version?.number ?? 1;
+                const currentTitle = currentPage.title;
+
+                let markdownContent = '';
+                let markdownDirPath = process.cwd();
+
+                if (options.file) {
+                    try {
+                        const filePath = path.resolve(process.cwd(), options.file);
+                        markdownDirPath = path.dirname(filePath);
+                        markdownContent = fs.readFileSync(filePath, 'utf-8');
+                    } catch (e: any) {
+                        console.error(chalk.red(`파일 읽기 실패: ${e.message}`));
+                        process.exit(1);
+                    }
+                } else if (options.content) {
+                    markdownContent = options.content;
+                } else {
+                    console.error(chalk.red('오류: --content 또는 --file 옵션 중 하나는 필수입니다.'));
+                    process.exit(1);
+                }
+
+                const updatedPage = await api.updatePage({
+                    id: pageId,
+                    title: options.title || currentTitle,
+                    body: mdToStorage.convert(markdownContent),
+                    version: currentVersion,
+                });
+
+                console.log(chalk.green(`페이지 업데이트 완료: ${updatedPage.title} (ID: ${updatedPage.id})`));
+                console.log(`버전: v${currentVersion} → v${currentVersion + 1}`);
+                console.log(`URL: ${updatedPage._links?.base}${updatedPage._links?.webui}`);
+
+                // 로컬 이미지 첨부파일 업로드 처리 (upsert)
+                if (options.file) {
+                    const localImages = mdToStorage.extractLocalImages(markdownContent);
+                    if (localImages.length > 0) {
+                        console.log(chalk.blue(`로컬 이미지 첨부파일 업로드 시작 (${localImages.length}개)...`));
+                        for (const imgSrc of localImages) {
+                            try {
+                                const imagePath = path.resolve(markdownDirPath, imgSrc);
+                                if (fs.existsSync(imagePath)) {
+                                    const fileBuffer = fs.readFileSync(imagePath);
+                                    const filename = path.basename(imgSrc);
+                                    let contentType = 'application/octet-stream';
+                                    if (filename.endsWith('.png')) contentType = 'image/png';
+                                    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+                                    else if (filename.endsWith('.svg')) contentType = 'image/svg+xml';
+                                    else if (filename.endsWith('.gif')) contentType = 'image/gif';
+                                    await api.uploadAttachment(updatedPage.id, filename, fileBuffer, contentType);
+                                    console.log(chalk.green(`  - 업로드 완료: ${filename}`));
+                                } else {
+                                    console.error(chalk.yellow(`  - 이미지 파일을 찾을 수 없습니다: ${imagePath}`));
+                                }
+                            } catch (uploadErr: any) {
+                                console.error(chalk.red(`  - 업로드 실패 (${imgSrc}): ${uploadErr.message}`));
+                            }
+                        }
+                    }
+                }
+            } catch (e: any) {
+                console.error(chalk.red(`업데이트 실패: ${e.message}`));
             }
         });
 

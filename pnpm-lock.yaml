@@ -26,6 +26,9 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
+      form-data:
+        specifier: ^4.0.5
+        version: 4.0.5
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2
