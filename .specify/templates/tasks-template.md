@@ -7,7 +7,7 @@ description: "Task list template for feature implementation"
 
 **Confluence Link**: `[LINK_TO_CONFLUENCE]`  
 **JIRA Epic/Ticket**: `[JIRA_TICKET_ID]`  
-**Input**: Design documents from `/specs/[###-feature-name]/`
+**Input**: Design documents from `tdecollab-docs/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
