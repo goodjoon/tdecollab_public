@@ -35,6 +35,7 @@
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",
+    "form-data": "^4.0.5",
     "jsdom": "^29.0.2",
     "markdown-it": "^14.1.0",
     "turndown": "^7.2.4",

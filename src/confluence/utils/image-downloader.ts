@@ -143,9 +143,9 @@ export class ImageDownloader {
                 fs.mkdirSync(this.options.outputDir, { recursive: true });
             }
 
-            // 고유한 파일명 생성
-            const uniqueFilename = this.getUniqueFilename(this.options.outputDir, filename);
-            const outputPath = path.join(this.options.outputDir, uniqueFilename);
+            // 파일명 정리 (중복 시 덮어쓰기)
+            const sanitized = this.sanitizeFilename(filename);
+            const outputPath = path.join(this.options.outputDir, sanitized);
 
             // 파일 저장
             fs.writeFileSync(outputPath, buffer);
@@ -168,7 +168,8 @@ export class ImageDownloader {
         for (const ref of references) {
             const localPath = await this.downloadImage(ref);
             if (localPath) {
-                mapping.set(ref.originalTag, localPath);
+                const key = ref.type === 'attachment' ? ref.filename : (ref.url || ref.originalTag);
+                mapping.set(key!, localPath);
             }
         }
 

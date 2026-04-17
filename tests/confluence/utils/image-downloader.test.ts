@@ -171,7 +171,7 @@ describe('ImageDownloader', () => {
             expect(localPath).toBeNull();
         });
 
-        it('should handle filename collision', async () => {
+        it('should handle filename collision by overwriting', async () => {
             const downloader = new ImageDownloader(mockApi, options);
             const mockBuffer = Buffer.from('image-data');
 
@@ -197,8 +197,12 @@ describe('ImageDownloader', () => {
             const localPath = await downloader.downloadImage(ref);
 
             expect(localPath).toBeTruthy();
-            expect(localPath).toContain('test_1.png'); // 중복 처리
+            // 중복 시 덮어쓰기 (test_1 이 아닌 test.png 로 저장)
+            expect(localPath).toContain('test.png');
+            expect(localPath).not.toContain('test_1.png');
             expect(fs.existsSync(localPath!)).toBe(true);
+            // 새 내용으로 덮어써짐
+            expect(fs.readFileSync(localPath!).toString()).toBe('image-data');
         });
 
         it('should sanitize special characters in filename', async () => {
@@ -250,7 +254,8 @@ describe('ImageDownloader', () => {
             const mapping = await downloader.downloadAllImages(html);
 
             expect(mapping.size).toBe(2);
-            expect(Array.from(mapping.keys())).toContain('<ac:image><ri:attachment ri:filename="image1.png" /></ac:image>');
+            // mapping key는 attachment의 경우 filename 기반
+            expect(Array.from(mapping.keys())).toContain('image1.png');
         });
 
         it('should handle partial failures', async () => {

@@ -100,7 +100,50 @@ export class ConfluenceContentApi {
         await this.client.post(`/rest/api/content/${id}/label`, data);
     }
 
-    // Attachment 관련 메서드
+    // Attachment 관련 메서드 (upsert: 기존 파일이 있으면 업데이트, 없으면 신규 업로드)
+    async uploadAttachment(pageId: string, filename: string, fileContent: Buffer, contentType?: string): Promise<ConfluenceAttachmentResponse> {
+        const FormData = (await import('form-data')).default;
+
+        // 기존 첨부파일 존재 여부 확인
+        const existingAttachments = await this.getAttachments(pageId, filename);
+        const existing = existingAttachments.find(a => a.title === filename);
+
+        const form = new FormData();
+        form.append('file', fileContent, {
+            filename: filename,
+            contentType: contentType || 'application/octet-stream'
+        });
+
+        const headers = {
+            ...form.getHeaders(),
+            'X-Atlassian-Token': 'nocheck',
+            'Accept': 'application/json',
+        };
+
+        let response;
+        if (existing) {
+            // 기존 파일 업데이트 (POST to /data endpoint)
+            response = await this.client.post(
+                `/rest/api/content/${pageId}/child/attachment/${existing.id}/data`,
+                form,
+                { headers }
+            );
+        } else {
+            // 신규 업로드
+            response = await this.client.post(
+                `/rest/api/content/${pageId}/child/attachment`,
+                form,
+                { headers }
+            );
+        }
+
+        // Confluence API returns { results: [Attachment] } 
+        if (response.data && response.data.results && response.data.results.length > 0) {
+            return response.data.results[0];
+        }
+        return response.data;
+    }
+
     async getAttachments(pageId: string, filename?: string): Promise<ConfluenceAttachmentResponse[]> {
         const response = await this.client.get(`/rest/api/content/${pageId}/child/attachment`, {
             params: {

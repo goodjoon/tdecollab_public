@@ -16,7 +16,7 @@ function getEnvOrThrow(key: string, description: string): string {
 }
 
 // Confluence 설정 로드 (PAT 인증 권장)
-export function loadConfluenceConfig(): ConfluenceConfig & { mermaidMacroName: string } {
+export function loadConfluenceConfig(): ConfluenceConfig & { mermaidMacroName: string, inlineCodeStyle: string } {
     const baseUrl = getEnvOrThrow('CONFLUENCE_BASE_URL', 'Confluence 기본 URL');
     // PAT 사용 시 username은 불필요 (Basic Auth 사용 시에만 필요)
     const username = process.env.CONFLUENCE_USERNAME;
@@ -25,6 +25,9 @@ export function loadConfluenceConfig(): ConfluenceConfig & { mermaidMacroName: s
     // Mermaid 매크로 이름 (기본값: mermaiddiagram)
     const mermaidMacroName = process.env.CONFLUENCE_MERMAID_MACRO_NAME || 'mermaiddiagram';
 
+    // 인라인 코드 강조 스타일 (기본값: 붉은색 굵게)
+    const inlineCodeStyle = process.env.CONFLUENCE_INLINE_CODE_STYLE || 'color: #d04437; font-weight: bold;';
+
     return {
         baseUrl,
         auth: {
@@ -32,6 +35,7 @@ export function loadConfluenceConfig(): ConfluenceConfig & { mermaidMacroName: s
             token,
         },
         mermaidMacroName,
+        inlineCodeStyle,
     };
 }
 
