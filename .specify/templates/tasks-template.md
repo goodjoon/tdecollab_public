@@ -5,6 +5,8 @@ description: "Task list template for feature implementation"
 
 # Tasks: [FEATURE NAME]
 
+**Confluence Link**: `[LINK_TO_CONFLUENCE]`  
+**JIRA Epic/Ticket**: `[JIRA_TICKET_ID]`  
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 

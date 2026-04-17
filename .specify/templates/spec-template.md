@@ -1,5 +1,7 @@
 # Feature Specification: [FEATURE NAME]
 
+**Confluence Link**: `[LINK_TO_CONFLUENCE]`  
+**JIRA Epic/Ticket**: `[JIRA_TICKET_ID]`  
 **Feature Branch**: `[###-feature-name]`  
 **Created**: [DATE]  
 **Status**: Draft  

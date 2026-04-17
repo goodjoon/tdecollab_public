@@ -27,11 +27,14 @@
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
-## Constitution Check
+## 헌장 검토 (Constitution Check)
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: 기획(Phase 0) 전에 통과해야 하며, 설계(Phase 1) 이후 재확인해야 합니다.*
 
-[Gates determined based on constitution file]
+- [ ] **문서 기반 (Document-Driven)**: 관련 설계서 및 PRD가 Confluence에 작성되었습니까?
+- [ ] **추적성 (Traceability)**: 진행할 작업들이 JIRA 티켓으로 매핑될 수 있습니까?
+- [ ] **인간 승인 (Human Approval)**: 이 계획에 대해 책임자(Human)의 사전 승인을 받았습니까?
+- [ ] **감사 가능성 (Auditability)**: 시스템 통합(GitLab 등)에 필요한 모든 과정이 추적 가능합니까?
 
 ## Project Structure
 
