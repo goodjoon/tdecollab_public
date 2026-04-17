@@ -37,7 +37,8 @@ flowchart TD
     Backend <--> MCP["Tools (TypeScript/MCP Server)"]
     MCP <--> Confluence[("사내 Confluence")]
     MCP <--> JIRA[("사내 JIRA")]
-    GitLab[("사내 GitLab")] -- Webhook --> Backend
+    GitLab[("사내 GitLab")] -- "Webhook (Push)" --> Backend
+    Backend -- "Polling (Pull)" --> GitLab
     AI(["AI 에이전트"]) <--> UI
     AI <--> MCP
 ```
