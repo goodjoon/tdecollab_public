@@ -79,6 +79,8 @@ src/
 - `commander`
 - `dotenv`
 - `markdown-it`
+- `turndown` (HTML to Markdown 변환)
+- `jsdom` (Node.js DOM 시뮬레이션)
 
 ## TDE 환경 정보
 - Confluence: `https://confluence.tde.sktelecom.com` (Server/DC, REST API v1)
@@ -105,6 +107,7 @@ src/
 - 내부 데이터 관리를 위한 PostgreSQL 또는 단순 파일(JSON) 스토리지 (결정 필요시 기본적으로 기존 환경 활용) (001-agentic-prd-harness)
 - TypeScript (Frontend, Tools), Python 3.11+ (Backend) + Next.js, FastAPI, @modelcontextprotocol/sdk (001-agentic-prd-harness)
 - PostgreSQL (Backend DB) (001-agentic-prd-harness)
+- [e.g., TypeScript 5.x, Node.js 20+] + [@modelcontextprotocol/sdk, axios, zod, commander] (002-confluence-tool-enhancement)
 
 ## Recent Changes
 - 001-agentic-prd-harness: Added TypeScript (Node.js 20+) + React/Next.js (Frontend), Express/NestJS (Backend), @modelcontextprotocol/sdk, axios
