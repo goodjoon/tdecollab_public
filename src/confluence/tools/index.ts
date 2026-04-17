@@ -22,6 +22,7 @@ export function registerConfluenceTools(server: McpServer) {
 
         const mdToStorage = new MarkdownToStorageConverter();
         const storageToMd = new StorageToMarkdownConverter();
+        const aiService = new AIConversionService();
 
         // Tools
 
@@ -32,8 +33,9 @@ export function registerConfluenceTools(server: McpServer) {
                 pageId: z.string().describe('페이지 ID'),
                 downloadImages: z.boolean().optional().describe('이미지 다운로드 여부'),
                 imageDir: z.string().optional().describe('이미지 저장 디렉토리 (기본값: ./images)'),
+                useAiFallback: z.boolean().optional().describe('변환 결과 보정을 위해 AI를 사용할지 여부'),
             },
-            async ({ pageId, downloadImages, imageDir }) => {
+            async ({ pageId, downloadImages, imageDir, useAiFallback }) => {
                 const page = await contentApi.getPage(pageId);
 
                 let md = '';
@@ -56,6 +58,16 @@ export function registerConfluenceTools(server: McpServer) {
                     }
 
                     md = storageToMd.convert(page.body.storage.value, imageUrlMap);
+                    
+                    if (useAiFallback) {
+                        const aiResult = await aiService.refine({
+                            sourceContent: md,
+                            sourceType: 'markdown',
+                            targetType: 'markdown',
+                            context: '이전 변환 결과가 깨졌거나 표 형식이 부적절할 수 있습니다. 깨끗한 GFM 형식으로 보정해주세요.'
+                        });
+                        md = aiResult.convertedContent;
+                    }
                 }
 
                 return {
@@ -78,9 +90,21 @@ export function registerConfluenceTools(server: McpServer) {
                 content: z.string().describe('페이지 내용 (Markdown)'),
                 parentId: z.string().optional().describe('부모 페이지 ID'),
                 labels: z.array(z.string()).optional().describe('라벨 목록'),
+                useAiFallback: z.boolean().optional().describe('복잡한 변환을 위해 AI를 사용할지 여부'),
             },
-            async ({ spaceKey, title, content, parentId, labels }) => {
-                const storageBody = mdToStorage.convert(content);
+            async ({ spaceKey, title, content, parentId, labels, useAiFallback }) => {
+                let storageBody = mdToStorage.convert(content);
+                
+                if (useAiFallback) {
+                    const aiResult = await aiService.refine({
+                        sourceContent: content,
+                        sourceType: 'markdown',
+                        targetType: 'storage-xml',
+                        context: 'Confluence Storage XML 형식으로 변환해주세요. Mermaid는 mermaiddiagram 매크로를 사용하세요.'
+                    });
+                    storageBody = aiResult.convertedContent;
+                }
+
                 const page = await contentApi.createPage({
                     spaceKey,
                     title,
@@ -249,13 +273,25 @@ export function registerConfluenceTools(server: McpServer) {
             {
                 content: z.string().describe('변환할 컨텐츠'),
                 format: z.enum(['storage_to_markdown', 'markdown_to_storage']).describe('변환 방향'),
+                useAi: z.boolean().optional().describe('지능형 변환을 위해 AI를 사용할지 여부'),
             },
-            async ({ content, format }) => {
+            async ({ content, format, useAi }) => {
                 let result = '';
-                if (format === 'storage_to_markdown') {
-                    result = storageToMd.convert(content);
+                if (useAi) {
+                    const sourceType = format === 'storage_to_markdown' ? 'storage-xml' : 'markdown';
+                    const targetType = format === 'storage_to_markdown' ? 'markdown' : 'storage-xml';
+                    const aiResult = await aiService.refine({
+                        sourceContent: content,
+                        sourceType,
+                        targetType
+                    });
+                    result = aiResult.convertedContent;
                 } else {
-                    result = mdToStorage.convert(content);
+                    if (format === 'storage_to_markdown') {
+                        result = storageToMd.convert(content);
+                    } else {
+                        result = mdToStorage.convert(content);
+                    }
                 }
                 return {
                     content: [{ type: 'text', text: result }],

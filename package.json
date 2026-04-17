@@ -35,12 +35,17 @@
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",
+    "jsdom": "^29.0.2",
     "markdown-it": "^14.1.0",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.1",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.13.4",
+    "@types/turndown": "^5.0.6",
     "axios-mock-adapter": "^2.1.0",
     "prettier": "^3.5.2",
     "tsup": "^8.4.0",
