@@ -7,7 +7,7 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
-> **Note**: 본 문서는 `@tdecollab-docs/specs/[###-feature-name]/spec.md`에 저장됩니다. 헌장에 따라 설계 과정에서 Mermaid 다이어그램과 표를 적극적으로 활용하십시오.
+> **Note**: 본 문서는 `tdecollab-docs/specs/[###-feature-name]/spec.md`에 저장됩니다. 헌장에 따라 설계 과정에서 Mermaid 다이어그램과 표를 적극적으로 활용하십시오.
 
 ## User Scenarios & Testing *(mandatory)*
 

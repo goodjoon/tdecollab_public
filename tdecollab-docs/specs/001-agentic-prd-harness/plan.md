@@ -16,13 +16,13 @@
 **Target Platform**: Linux Server, Web Browser, MCP Client
 **Project Type**: 웹 애플리케이션 (Frontend/Backend) 및 MCP Server
 **Performance Goals**: API 응답 지연 최소화 및 실시간 상호작용 지원
-**Constraints**: 클린 아키텍처, 헌장에 따른 문서화 및 컨텍스트 유지(`@tdecollab-docs/`)
+**Constraints**: 클린 아키텍처, 헌장에 따른 문서화 및 컨텍스트 유지(`tdecollab-docs/`)
 
 ## 헌장 검토 (Constitution Check)
 
 *GATE: 기획(Phase 0) 전에 통과해야 하며, 설계(Phase 1) 이후 재확인해야 합니다.*
 
-- [x] **컨텍스트 유지 (Context Maintenance)**: `@tdecollab-docs/`에 모든 설계 및 의사결정 문서가 작성되었습니까?
+- [x] **컨텍스트 유지 (Context Maintenance)**: `tdecollab-docs/`에 모든 설계 및 의사결정 문서가 작성되었습니까?
 - [x] **코드 품질 및 가독성 (Code Quality)**: 재사용성과 가독성을 고려한 설계입니까?
 - [x] **TDD (Test-Driven Development)**: 구현 전 테스트 코드 작성이 계획되어 있습니까?
 - [x] **시각화 (Rich Documentation)**: Mermaid 다이어그램과 표를 활용하여 설계가 시각화되었습니까?
@@ -48,7 +48,7 @@ flowchart TD
 ### Documentation (this feature)
 
 ```text
-@tdecollab-docs/specs/001-agentic-prd-harness/
+tdecollab-docs/specs/001-agentic-prd-harness/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

@@ -7,7 +7,7 @@ description: "Task list template for feature implementation"
 
 **Confluence Link**: `[LINK_TO_CONFLUENCE]`  
 **JIRA Epic/Ticket**: `[JIRA_TICKET_ID]`  
-**Input**: Design documents from `@tdecollab-docs/specs/[###-feature-name]/`
+**Input**: Design documents from `tdecollab-docs/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
 **Tests (MANDATORY)**: 헌장 III 원칙에 따라 모든 기능 구현 시 테스트 코드를 반드시 작성해야 합니다.
@@ -71,6 +71,6 @@ description: "Task list template for feature implementation"
 
 ## Phase N: Polish & Documentation
 
-- [ ] TXXX [P] Final documentation updates in `@tdecollab-docs/` (Mermaid diagrams & Tables)
+- [ ] TXXX [P] Final documentation updates in `tdecollab-docs/` (Mermaid diagrams & Tables)
 - [ ] TXXX Code cleanup and refactoring (DRY & Clean Code)
 - [ ] TXXX Verify all tests pass with `pnpm test`
