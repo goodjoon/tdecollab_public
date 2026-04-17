@@ -15,28 +15,28 @@ function getEnvOrThrow(key: string, description: string): string {
     return value;
 }
 
-// Confluence 설정 로드
+// Confluence 설정 로드 (PAT 인증 권장)
 export function loadConfluenceConfig(): ConfluenceConfig {
     const baseUrl = getEnvOrThrow('CONFLUENCE_BASE_URL', 'Confluence 기본 URL');
-    // Username은 선택값 (Bearer Token 사용 시 불필요)
+    // PAT 사용 시 username은 불필요 (Basic Auth 사용 시에만 필요)
     const username = process.env.CONFLUENCE_USERNAME;
-    const token = getEnvOrThrow('CONFLUENCE_API_TOKEN', 'Confluence API 토큰');
+    const token = getEnvOrThrow('CONFLUENCE_API_TOKEN', 'Confluence PAT 토큰');
 
     return {
         baseUrl,
         auth: {
             username,
-            token, // API 토큰은 일반적으로 패스워드 필드에 사용되지만, 여기서는 token으로 저장하여 범용성 확보
+            token,
         },
     };
 }
 
-// JIRA 설정 로드
+// JIRA 설정 로드 (PAT 인증 권장)
 export function loadJiraConfig(): JiraConfig {
     const baseUrl = getEnvOrThrow('JIRA_BASE_URL', 'JIRA 기본 URL');
-    // Username은 선택값 (PAT 사용 시 불필요)
+    // PAT 사용 시 username은 불필요
     const username = process.env.JIRA_USERNAME;
-    const token = getEnvOrThrow('JIRA_API_TOKEN', 'JIRA API 토큰');
+    const token = getEnvOrThrow('JIRA_API_TOKEN', 'JIRA PAT 토큰');
 
     return {
         baseUrl,

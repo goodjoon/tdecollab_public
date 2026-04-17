@@ -12,29 +12,35 @@ export function createHttpClient(config: ServiceConfig): AxiosInstance {
         },
     });
 
-    // 요청 인터셉터: 인증 헤더 주입
+    // 요청 인터셉터: 인증 헤더 주입 및 로깅
     client.interceptors.request.use((reqConfig) => {
-        // Basic 인증 (사용자명 + 토큰)
-        if (config.auth.username && config.auth.token) {
+        // 1. 토큰 기반 Bearer 인증 (Confluence/JIRA PAT 권장 방식)
+        if (config.auth.token && !reqConfig.headers.Authorization && !reqConfig.headers['PRIVATE-TOKEN']) {
+            // GitLab은 PRIVATE-TOKEN 헤더를 선호하므로 제외
+            reqConfig.headers.Authorization = `Bearer ${config.auth.token}`;
+        }
+        // 2. Basic 인증 (Username + Password/Token) - Bearer가 없을 때만 사용
+        else if (config.auth.username && config.auth.token && !reqConfig.headers.Authorization) {
             const token = Buffer.from(`${config.auth.username}:${config.auth.token}`).toString('base64');
             reqConfig.headers.Authorization = `Basic ${token}`;
         }
-        // 토큰 기반 인증 (GitLab 등)
-        else if (config.auth.token) {
-            // GitLab 등은 PRIVATE-TOKEN 헤더를 사용하기도 하나,
-            // 여기서는 표준 Authorization Bearer 헤더를 기본으로 사용.
-            // 서비스별 특수 헤더는 필요 시 호출자나 별도 로직에서 처리.
-            if (!reqConfig.headers.Authorization && !reqConfig.headers['PRIVATE-TOKEN']) {
-                reqConfig.headers.Authorization = `Bearer ${config.auth.token}`;
-            }
-        }
+
+        logger.debug(`[HTTP Request] ${reqConfig.method?.toUpperCase()} ${reqConfig.url}`, {
+            headers: reqConfig.headers,
+            params: reqConfig.params,
+            data: reqConfig.data,
+        });
+
         return reqConfig;
     });
 
     // 응답 인터셉터: 에러 핸들링 및 로깅
     client.interceptors.response.use(
         (response: AxiosResponse) => {
-            logger.debug(`[HTTP] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+            logger.debug(`[HTTP Response] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+                headers: response.headers,
+                data: response.data,
+            });
             return response;
         },
         (error: AxiosError) => {
@@ -44,7 +50,11 @@ export function createHttpClient(config: ServiceConfig): AxiosInstance {
                 const url = error.config?.url;
                 const message = (error.response.data as any)?.message || error.message;
 
-                logger.error(`[HTTP] ${status} ${method} ${url} - ${message}`);
+                logger.error(`[HTTP Error] ${status} ${method} ${url}`, {
+                    message,
+                    responseData: error.response.data,
+                    requestHeaders: error.config?.headers,
+                });
 
                 // 상태 코드별 커스텀 에러 매핑
                 if (status === 401 || status === 403) {

@@ -7,15 +7,23 @@ class Logger {
         this.level = (process.env.LOG_LEVEL as LogLevel) || 'info';
     }
 
+    // 로그 레벨 설정
+    setLevel(level: LogLevel) {
+        this.level = level;
+    }
+
     // 로그 메시지 포맷팅 (타임스탬프, 레벨 포함)
     private formatMessage(level: LogLevel, message: string, ...args: any[]): string {
         const timestamp = new Date().toISOString();
         let formattedMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
 
         if (args.length > 0) {
-            formattedMessage += ' ' + args.map(arg =>
-                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-            ).join(' ');
+            formattedMessage += ' ' + args.map(arg => {
+                if (arg instanceof Error) {
+                    return arg.stack || arg.message;
+                }
+                return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+            }).join(' ');
         }
 
         // 민감 정보 마스킹 (토큰, 비밀번호 등)
@@ -26,9 +34,20 @@ class Logger {
 
     // 민감한 데이터(키, 패스워드 등) 마스킹 처리
     private maskSensitiveData(text: string): string {
-        // 키워드 기반 마스킹 (token, password, secret 등)
-        // 간단한 예시 구현 (실제로는 정규식 등으로 더 정교하게 처리 가능)
-        return text.replace(/((?:token|password|secret|key)["']?\s*[:=]\s*["']?)([^"'\s]+)(["']?)/gi, '$1******$3');
+        // 1. Authorization 헤더 마스킹 (Basic ***, Bearer ***)
+        let masked = text.replace(/(Authorization["']?\s*[:=]\s*["']?)(Basic|Bearer)\s+([^"'\s]+)(["']?)/gi, (match, p1, p2, p3, p4) => {
+            const maskedToken = p3.length > 8 ? p3.substring(0, 4) + '...' + p3.substring(p3.length - 4) : '******';
+            return `${p1}${p2} ${maskedToken}${p4}`;
+        });
+
+        // 2. 키워드 기반 마스킹 (token, password, secret, key 등)
+        // 헤더 이름(PRIVATE-TOKEN 등)과 변수명 모두 대응 가능하도록 개선
+        masked = masked.replace(/((?:token|password|secret|key|api_token|private_token)["']?\s*[:=]\s*["']?)([^"'\s]+)(["']?)/gi, (match, p1, p2, p3) => {
+            const maskedValue = p2.length > 8 ? p2.substring(0, 4) + '...' + p2.substring(p2.length - 4) : '******';
+            return `${p1}${maskedValue}${p3}`;
+        });
+
+        return masked;
     }
 
     // Debug 레벨 로그 출력

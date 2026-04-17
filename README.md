@@ -328,11 +328,11 @@ src/
 
 ## 문서
 
-상세한 설계 문서는 `docs/` 디렉토리를 참조하세요.
+상세한 설계 문서는 `tdecollab-docs/` 디렉토리를 참조하세요.
 
-- [아키텍처](docs/architecture.md)
-- [인증 및 설정](docs/auth-and-config.md)
-- [MCP 서버 설계](docs/mcp-server-design.md)
-- Confluence: [API 스펙](docs/confluence/api-spec.md) | [기능 정의](docs/confluence/features.md) | [MCP 도구](docs/confluence/mcp-tools.md)
-- JIRA: [API 스펙](docs/jira/api-spec.md) | [기능 정의](docs/jira/features.md) | [MCP 도구](docs/jira/mcp-tools.md)
-- GitLab: [API 스펙](docs/gitlab/api-spec.md) | [기능 정의](docs/gitlab/features.md) | [MCP 도구](docs/gitlab/mcp-tools.md)
+- [아키텍처](tdecollab-docs/architecture.md)
+- [인증 및 설정](tdecollab-docs/auth-and-config.md)
+- [MCP 서버 설계](tdecollab-docs/mcp-server-design.md)
+- Confluence: [API 스펙](tdecollab-docs/confluence/api-spec.md) | [기능 정의](tdecollab-docs/confluence/features.md) | [MCP 도구](tdecollab-docs/confluence/mcp-tools.md)
+- JIRA: [API 스펙](tdecollab-docs/jira/api-spec.md) | [기능 정의](tdecollab-docs/jira/features.md) | [MCP 도구](tdecollab-docs/jira/mcp-tools.md)
+- GitLab: [API 스펙](tdecollab-docs/gitlab/api-spec.md) | [기능 정의](tdecollab-docs/gitlab/features.md) | [MCP 도구](tdecollab-docs/gitlab/mcp-tools.md)
