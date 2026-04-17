@@ -1,0 +1,571 @@
+# Live Voice Media Flow 인터페이스 목록 V2
+
+## 문서 정보
+
+-   목적: XGW, Worker, 외부 엔진 간 인터페이스를 빠르게 참조
+-   범위: WebSocket, NATS Core, protobuf payload, 외부 엔진 연동 인터페이스
+-   참조: [LVMF PRD V2](../../analysis/1.%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%EC%A0%95%EC%9D%98/lvmf.prd.v2.md)
+
+## 연결 문서
+
+-   [LVMF PRD V2](../../analysis/1.%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%EC%A0%95%EC%9D%98/lvmf.prd.v2.md)
+-   [아키텍처 설계서 V2](../1.%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90%EC%84%A4%EA%B3%84/lvmf.arch.design.v2.md)
+-   [Backend V2 패키지 구조 설계서](../1.%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90%EC%84%A4%EA%B3%84/lvmf.backend_v2.package-structure.md)
+-   [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md)
+-   [STT 인터페이스](interface.stt.sktelecom.md)
+-   [TTS 인터페이스](interface.tts.sktelecom.md)
+-   [LVTF 인터페이스](interface.lvtf.sktelecom.md)
+
+## 1. Client Interface (Channel <-> XGW)
+
+| 구간 | 메시지/메서드 | 프로토콜 | 설명 | 비고 |
+| --- | --- | --- | --- | --- |
+| Channel -> XGW | `wss://{host}/v2/livevoice` | WebSocket | WebSocket 연결 | handshake 시 API Key 검증 |
+| Channel -> XGW | 🔄`session.setup` | WebSocket JSON | 세션 초기 설정 | schema validation 필수 |
+| Channel -> XGW | 🔄`audio.input.append` | WebSocket Binary/JSON | 사용자 발화 오디오 입력 | 50ms chunk 권장 |
+| Channel -> XGW | 🔄`audio.output.stopped` | WebSocket JSON | 재생 중단 피드백 전달 | reason/debug 중심 |
+| Channel -> XGW | 🔄`text.input.append` | WebSocket JSON | 사용자 텍스트 입력 chunk | chunking 정책 합의 필요 |
+| Channel -> XGW | 🔄`text.input.commit` | WebSocket JSON | 사용자 텍스트 입력 완료 | chatOptions 선택 전달 |
+| Channel -> XGW | 🔄`event.input` | WebSocket JSON | 사용자 이벤트 입력 | eventName/eventTarget/eventData 전달 |
+| Channel -> XGW | 🔄`session.end` | WebSocket JSON | 세션 종료 알림 | timeout 과 동일 종료 경로 |
+| Channel -> XGW | ✨`session.update` | WebSocket JSON | 세션 설정 일부 갱신 | setup 이후 변경 가능한 속성만 부분 전송 |
+|  |  |  |  |  |
+|  |  |  |  |  |
+| XGW -> Channel | `connection.accepted` | WebSocket JSON | 연결 완료 | API Key 검증 후 응답 |
+| XGW -> Channel | `session.setup.complete` | WebSocket JSON | 세션 설정 결과 | setup 집계 성공 시 1회 회신 |
+| XGW -> Channel | `audio.input.transcript` | WebSocket JSON | 입력 음성 transcript 정보 | partial/final 플래그 유지, VAD 정보 포함 |
+| XGW -> Channel | 🔄`audio.output` | WebSocket Binary/JSON | 응답 오디오 출력 전송 | sequence 보장 필요 |
+| XGW -> Channel | `audio.output.stop` | WebSocket JSON | 재생 중지 요청 | barge-in 상황 등에서 client 중지 요청 |
+| XGW -> Channel | 🔄`event.output` | WebSocket JSON | 시스템 이벤트 출력 | platform 이 channel client 에게 이벤트 출력 |
+| XGW -> Channel | 🔄`error` | WebSocket JSON | 오류 발생 알림 | 내부 오류코드 매핑 |
+| XGW -> Channel | ✨ `session.updated` | WebSocket JSON | 세션 업데이트 완료 | update 집계 성공 시 1회 회신 |
+|  |  |  |  |  |
+|  |  |  |  |  |
+| ✨: 신규 추가 |  |  |  |  |
+| 🔄 : Update 됨 |  |  |  |  |
+
+### 1.1. Client -> XGW
+
+#### 1.1.1 공통 Header 설정
+
+##### case A. Websocket Header 로 전달
+
+Header 에는 인증 및 Live Voice 의 Service Profile 을 식별하기 위한 Key / Value 를 포함한다.
+
+| Header Key | Value | example |
+| --- | --- | --- |
+| `Authorization` | `Bearer` <API-KEY> | Authorization: Bearer lvk-abcdefghijklmnopqrstuvwxyz |
+
+##### case B. Browser 기반 Client (Header Manipulation 불가한 Client)
+
+Sub Protocol 로 `livevoice.v2.insecure-key.<API-KEY>` 를 사용한다.
+
+```javascript
+// 예: 서버와 약속한 하나의 프로토콜 문자열로 service_id + api_key 전달
+const apiKey = 'client-api-key';  // 발급받은 API Key
+const protocol = `livevoice.v2.insecure-key.${encodeURIComponent(apiKey)}`;
+
+const ws = new WebSocket('wss://gateway.example.com/v2/livevoice', [protocol]);
+```
+
+#### 1.1.2 Websocket Connect
+
+Live Voice Gateway 에 WebSocket Connection 을 생성한다. 반드시 Header 에 API-KEY 가 포함되어야 한다.
+
+> Endpoint : wss://{live-voice-host}/v2/livevoice
+
+API-KEY 인증 후 Connection 이 정상적으로 연결 되면 `connection.accepted` 를 수신한다
+
+```mermaid
+sequenceDiagram
+    participant CH as Channel Client
+    participant XGW as XGW
+    
+    CH ->> XGW: wss:///v2/livevoice
+    XGW -->> XGW: API Key Verification
+    XGW -->> CH: connection.accepted
+```
+
+#### 1.1.2.1 공통 `debug` 필드
+
+모든 client -> XGW 메시지와 XGW -> client 응답 메시지는 latency trace 용 `debug` 필드를 공통으로 포함할 수 있다.
+
+```json
+{
+	"debug": {
+		"tracePoints": [
+			{
+				"stage": "client.sent",
+				"timestampMs": 1775353205123
+			}
+		]
+	}
+}
+```
+
+세션 자체 디버그 동작 설정은 공통 `debug` 와 분리하여 `debugConfig` 로 표현한다.
+
+#### 1.1.3 `session.setup` - 세션 초기 설정
+
+세션 시작 시 사용할 modality, flow, audio, dialog 설정을 최초 1회 전달한다.  
+세션 생성 이후 일부 속성만 바꾸려면 `session.update` 를 사용한다.
+
+```json
+{
+	"type": "session.setup",
+	"trId": "tr-129319820312819283719" // (옵션) 메시지와 응답 추적을 위한 transaction ID (Client로 부터 전달받음) , 없으면 XGW 가 UUID 기반 생성
+	"modalities": ["audio","text"],  // (필수) audio, text 조합 가능
+	"platform":
+    {
+	    "preset": {  // (옵션) preset 이름이 있는경우, AI One Portal 의 preset 을 조회하여 SessionSetup 메시지 사용 (preset 조회 Key : websocket 의 session id 기반)
+	        "usePreset":true
+        },
+		"ttsChunking":
+		{
+			"mode": "punctuation"
+		},
+		"flow": {
+			"version": "1",
+			"orchestration": "voiceflow" // (필수) 어떤 orchestration flow 인지 지정 (voiceflow|chatflow|debug.tts|debug.stt|debug.tf)
+		}
+    },
+	"audio": {
+		"input" : {
+			"vendor" : "skt",  // (옵션) skt, (openai, google, livekit) ()->지원예정
+			"protocolVersion" : "1" , // (옵션) 프로토콜 버전 (기본 1)
+			"format": "pcm_16k", // (필수) pcm_8k, pcm_16k, speex_16k
+			"sttTransport": "binary", // (옵션) binary | base64. XGW -> STTW audio.input.append payload 방식
+            "model": "LiveVoice_STT_streaming", // (필수) A.X_STT_streaming
+            "vadType": "semantic", // (필수) semantic 
+            "partial": true, // (optional) 기본 true / false : final 만 전달
+            "language": "ko-KR" // (optional) 인식 언어 
+		},
+		"output" : {
+			"vendor": "skt", // (Optional) 기본 "skt"
+			"protocolVersion" : "1", // (옵션) 프로토콜 버전 (기본 1)
+			"model": "axtts-3-0",
+            "voice": "emily", // (필수) emily, sophie, jemma, andy 등
+            "speed": 1.0, // (Optional) default: 1.0
+            "textChunkNum": 5, // (Optional) default: 5
+            "applyTn": false, // (Optional) default: false
+            "format": "pcm_16k" // (Optional) pcm_8k, pcm_16k, pcm_24k
+            "pocId": "livevoice" // (Optional) Poc ID
+		}
+	},
+	"dialog": { // 대화엔진 (LVTF) 전용의 설정값
+		"dialogHistoryCountForAgent": 10, // Agent 시스템에게 넘겨줄 최대 대화 히스토리 갯수
+		"inputMessageType": "voice", // "voice" | "text" 대화의 input 텍스트 종류. (voice - STT 를 통한 transcript , text - 채팅 기능으로 text 직접 입력)
+		"bargeIn" : {
+			"enable": true, // (필수) Barge In 사용여부
+			"bargeInWordCount": 2, // 대화 엔진 자체 barge-in 판정을 위한 음절 갯수
+		},
+		"tte": {
+			"enable": true, // (필수) Turn-Taking Engine(TTE) 사용 여부 (이하 useTte 가 true 인 경우 유효). (내부) useTte 가 false 인 경우는, LVTF 로 predict_enable = fasle, barge_in_enable = false 로 가야함 (나머지 값은 의미 없음)
+			"usePrediction": true, // turn 판정 검증 사용 여부
+			"historyCount": 10, // turn taking 엔진에 전달할 최대 대화 히스토리 갯수 
+			"minWaitTimeMs": 0, // turn taking 엔진에 전달할 최소 대기 시간 (ms)
+			"maxWaitTimeMs": 5000, // turn taking 엔진에 전달할 최대 대기 시간 (ms)
+		},
+		"agent": {
+			"vendor": "skt", // (Optional) "skt" (기본) || "openai" || "google"
+			"type": "llm" // (필수) "llm", "dm", "auto" (자동설정, TTE 로는 AGENT_TYPE_UNSPECIFIED 값으로 감)
+			"llm": { // (Optional) LLM 사용을 위한 정보
+				"model": "", // (필수) LLM 모델 ID)
+				"prompt": {
+					"system": "당신은 친절한 AI 어시스턴트입니다."
+				}
+			},
+			"dm": { // (Optional) 
+				"version": "1", 
+			}
+		}
+	},
+		"debugConfig": {
+			"mode": "tts-test", // tts-test | stt-json-test | stt-binary-test 
+		},
+		"debug": {
+			"tracePoints": [
+				{
+					"stage": "client.sent",
+					"timestampMs": 1775353205123
+				}
+			]
+		}
+	}
+```
+```mermaid
+sequenceDiagram
+    participant CH as Channel
+    participant XGW as XGW
+
+    CH ->> XGW: session.setup
+    XGW -->> CH: session.setup.complete
+```
+
+#### 1.1.4 `audio.input.append` - 오디오 전송
+
+```json
+{
+	    "type": "audio.input.append",
+	    "trId": "tr-129319820312819283719", // (옵션) 메시지와 응답 추적을 위한 ID
+	    "audio": "",
+	    "debug": {
+	        "tracePoints": [
+	            {
+	                "stage": "client.sent",
+	                "timestampMs": 1775353205123
+	            }
+	        ]
+	    }
+}
+```
+
+#### 1.1.5 `text.input.append` - 텍스트 전송
+
+```json
+{
+    "type": "text.input.append",
+    "trId": "tr-129319820312819283719" // (옵션) 메시지와 응답 추적을 위한 ID
+    "text": "블라블라블라블라....."
+}
+```
+```mermaid
+sequenceDiagram
+    participant CH as Channel
+    participant XGW as XGW
+
+    loop append text repeatedly
+        CH ->> XGW: text.input.append
+    end
+
+    CH ->> XGW: text.input.commit
+```
+
+#### 1.1.6 audio.output.stopped - 오디오 플레이 중지됨
+
+client 가 현재 재생을 중단했음을 XGW 에 알린다.
+
+```json
+{
+	"type": "audio.output.stopped",
+	"trId": "tr-129319820312819283719",
+	"reason": "barge-in"
+}
+```
+
+#### 1.1.7 `text.input.commit` - 텍스트 전송 완료
+
+```json
+{
+    "type": "text.input.commit",
+    "trId": "tr-129319820312819283719" // (옵션) 메시지와 응답 추적을 위한 ID
+    "chatOptions": {
+	    "systemPrompt": "...", // (옵션) 이번 턴에 적용할 System Prompt,
+	    "temperature": 0.0 // (옵션) 이번 턴에 적용할 LLM Temperature 0.0 ~ 2.0, 
+	    "maxTokens": 100000 // (옵션) 이번 턴에 적용할 최대 응답 token 수
+    }
+}
+```
+
+#### 1.1.8 `event.input` - 이벤트 전송
+
+명시적인 Modal 이 아닌 형태의 데이터는 이벤트를 통해 전송한다.  
+`stt` STT 쪽으로 event 전달 (eventName, eventData)
+
+```json
+{
+	"type": "event.input",
+	"trId": "tr-129319820312819283719" // (옵션) 메시지와 응답 추적을 위한 ID
+	"eventName": "some.event.name", //(필수) 이벤트의 이름
+	"eventTarget": "stt", // (옵션) 이벤트를 수신해야하는 target (stt | tts | tf | webhook.:https://127.0.0.1/aaaa )
+	"eventData": {
+		// KV 형태의 event Data. webhook. 요청시 body 로 전송 (application/json)
+	}
+}
+```
+
+#### 1.1.9 `session.end` - 세션 종료
+
+```json
+{
+	"type": "session.end",
+	"trId": "tr-129319820312819283719",
+	"reason": "client.closed"
+}
+```
+
+#### 1.1.10 ✨ `session.update` - 현재 Session 의 설정값 업데이트
+
+`session.setup` 이후 변경 가능한 속성만 부분 전송한다.  
+전체 payload 를 다시 보낼 필요는 없고, 바꾸려는 필드만 포함하면 된다.
+
+```json
+{
+	"type": "session.update",
+	"trId": "tr-129319820312819283719",
+	"audio": {
+		"output": {
+			"voice": "emily",
+			"speed": 1.1
+		}
+	},
+	"debugConfig": {
+		"mode": "tts-test"
+	}
+}
+```
+
+### 1.2. XGW -> Channel
+
+#### 1.2.1 `connection.accepted` - 연결 완료
+
+API-KEY 검증을 완료하고 연결이 정상적으로 이루어지면 `connection.accepted` 를 보낸다.
+
+```json
+{
+    "type": "connection.accepted",
+    "eventId": "lvevt.lksajlkasdjflkaskdjfalskd", // 이벤트 고유 식별자
+    "session": {
+        "sessionId": "lvssn.sdlkfjasldkfjasdlkfjas",  // 생성된 기본 session ID
+        "epoch": 1,     // 플랫폼에서 session 의 처리 소유권 지정을 위한 epoch
+    },
+    "project": {
+        "projectId":"my-project-id",   // (미정) AI One Portal 등에서 API Key 가 소속된 project Id.
+        "projectName":"my project", // (미정) AI One Portal 등에서 API Key 가 소속된 project Name.
+    },
+    "authorization": {
+        "expireAt": "yyyy-mm-dd hh:mm:ss", // API Key 만료일시
+    }
+}
+```
+
+#### 1.2.2 `session.setup.complete` - 세션 설정 완료
+
+`session.setup` 집계가 성공하면 XGW 가 단일 완료 응답을 보낸다.
+
+```json
+{
+	"type": "session.setup.complete",
+	"appliedSetup": {
+		"modalities": ["audio", "text"],
+		"platform": {
+			"flow": {
+				"version": "1",
+				"orchestration": "voiceflow"
+			}
+		}
+	}
+```
+
+#### 1.2.3 `audio.output` - 오디오 전송
+
+```json
+{
+	    "type": "audio.output",
+	    "trId": "td-129319820312819283719", // (옵션) 메시지와 응답 추적을 위한 transaction ID (Client로 부터 전달받음)
+	    "audio": "",
+	    "text": "안녕하세요, 무엇을 도와드릴까요?",
+	    "startTimeSeq": 0.0,
+	    "endTimeSeq": 1.5,
+	    "isFinal": false,
+	    "inputSentence": "원본 입력 문장",
+	    "inputTnSentence": "TN 변환 적용된 입력 문장",
+	    "debug": {
+	        "tracePoints": [
+	            {
+	                "stage": "ttsw.published",
+	                "timestampMs": 1775353206456
+	            }
+	        ]
+	    }
+}
+```
+```mermaid
+sequenceDiagram
+    participant CH as Channel
+    participant XGW as XGW
+
+    loop audio output
+        XGW ->> CH: audio.output
+        CH -->> CH: buffer & play
+    end
+
+    XGW ->> CH: final chunk
+```
+
+#### 1.2.4 `audio.input.transcript` - 음성인식 결과
+
+```json
+{
+    "type": "audio.input.transcript",
+    "trId": "td-129319820312819283719" // (옵션) 메시지와 응답 추적을 위한 transaction ID (Client로 부터 전달받음)
+    "text": "<인식 결과 텍스트>",
+    "startTime": {float},       # 발화 시작 시간
+    "endTime": {float},         # 발화 종료 시간
+    "final": {bool},            # 인식 최종 여부
+    "words": [{                 # 단어 리스트
+        "text": string,         
+        "start": {float},       # 단어 시작 시간
+        "end": {float}          # 단어 종료 시간
+    }, ... ],
+}
+```
+
+#### 1.2.5 `error` - 오류 전송
+
+```json
+{
+	"type": "error",
+	"trId": "td-129319820312819283719", // (옵션) 메시지와 응답 추적을 위한 transaction ID (Client로 부터 전달받음)
+	"errorCode": "NO_SOMETHING_ERROR",
+	"errorMessage": "뭔가 없습니다. 오류가 났지요",
+	"originType": "발생 Exception 의 origin class name"
+}
+```
+
+---
+
+## 2. XGW <-> Worker 내부 인터페이스
+
+상세 subject, header, delivery semantics 는 [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md) 를 우선 참고한다.
+
+### 2.1 기본 원칙
+
+| 항목 | 값 | 설명 |
+| --- | --- | --- |
+| 전송 프로토콜 | `NATS Core` | XGW 와 각 worker 사이의 내부 실시간 통신 |
+| payload 스키마 | `protobuf` | `backend_v2/common/src/main/proto/livevoice/lvmf/v2/internal/` 기준 |
+| 메시지 기준 | `Client Interface 우선` | XGW 는 client 인터페이스에 대응하는 메시지를 protobuf 로 직렬화하여 publish |
+| 계층 | `control`, `data`, `event` | 모든 내부 메시지는 세 계층 중 하나로 분류 |
+| 공통 header | `MessageHeader` | `message_id`, `correlation_id`, `session_id`, `epoch`, `partition_id`, `route_lane`, `group_id`, `source`, `target`, `occurred_at_ms` 포함 |
+| 공통 debug | `MessageDebug` | 모든 client/protobuf 메시지에 선택적으로 포함되는 latency trace 메타데이터. protobuf field number 는 `91` 고정 |
+| 응답 원칙 | `Client 응답 구조 우선` | worker 는 가능한 한 XGW -> Client 메시지 구조에 맞춘 payload 를 생성 |
+
+#### 2.1.1 XGW 처리 모델 요약
+
+-   XGW 는 `common` 모듈이 생성한 protobuf 계약을 사용한다.
+-   client 메시지는 XGW 에서 internal protobuf 로 정규화한 뒤 publish 한다.
+-   XGW 는 `route_lane`, `group_id`, `partition_id`, `epoch` 를 계산해 publish subject 를 결정한다.
+-   setup/update 집계와 relay 세부 정책은 [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md) 를 기준으로 본다.
+
+XGW 는 인증, 보안, 세션 관리, publish 라우팅만 담당한다.  
+XGW 는 worker 전용 payload 를 만들지 않고, client 로부터 받은 메시지와 동일한 의미의 protobuf 메시지를 publish 한다.
+
+worker 는 자신이 관심 있는 subject 를 구독하여 필요한 메시지 필드만 읽고 처리한다.  
+worker 가 생성하는 응답 역시 XGW 가 client 로 relay 할 수 있는 메시지 구조를 최대한 그대로 따른다.
+
+`partition_id` 는 특정 worker 인스턴스 ID 가 아니라 group 내부 session affinity 를 위한 논리 라우팅 슬롯이다. 예: `p1`  
+`route_lane` 은 orchestration 에서 파생한 lane 이고, `group_id` 는 STT/TTS/TF vendor 조합을 포함한 worker profile 이다.  
+XGW 는 `{route_lane, group_id, partition_id}` 조합을 계산해 publish 하고, 실제 구독/처리 책임은 worker queue group 이 가진다.  
+같은 subject 를 `sttw`, `ttsw`, `tfw` 가 각자 queue group 으로 subscribe 하므로, `audio.input.append` 같은 fan-out 메시지도 XGW 는 1회 publish 만 수행한다.  
+`group_id` 의 정적 조합 정의는 XGW routing profile catalog 가 관리하고, 실제 살아 있는 `{group_id, partition_id}` 슬롯은 worker registry/health 정보로 확인한다.
+
+### 2.2 공통 proto 파일
+
+| 파일 | 역할 | 주요 정의 |
+| --- | --- | --- |
+| `common.proto` | 공통 메타데이터 | `MessageHeader`, `MessageDebug`, `AudioFormat`, `WorkerKind`, `MessageLayer` |
+| `session.proto` | 세션 수명주기 메시지 | `SessionSetup`, `SessionSetupComplete`, `SessionUpdate`, `SessionUpdated`, `SessionEnd`, `Flow` |
+| `audio.proto` | 음성 입출력 메시지 | `AudioInputAppend`, `AudioOutputStopped`, `AudioInputTranscript`, `AudioOutput`, `AudioOutputStop` |
+| `text.proto` | 텍스트 입력/출력 메시지 | `TextInputAppend`, `TextInputCommit`, `TextOutput` |
+| `event.proto` | 일반 이벤트 메시지 | `EventInput`, `EventOutput` |
+| `error.proto` | 오류 메시지 | `ErrorMessage` |
+
+### 2.3 세션 제어
+
+세션 생성 이후 `sttw`, `ttsw`, `tfw` 모두 XGW 가 publish 한 `session.setup`, `session.update`, `session.end` 를 수신할 수 있어야 한다.  
+worker 는 이 메시지들을 기준으로 각 외부 엔진과의 세션을 생성, 갱신, 종료한다.
+
+| 발행 기준 | protobuf 메시지 | 설명 | 관심 worker 예시 |
+| --- | --- | --- | --- |
+| `session.setup` | `SessionSetup` | 세션 최초 설정 전달 | `sttw`, `ttsw`, `tfw` |
+| `session.setup.complete` | `SessionSetupComplete` | worker 처리 완료 후 XGW 가 client 로 relay 할 수 있는 완료 메시지 | `sttw`, `ttsw`, `tfw` -> `xgw` |
+| `session.update` | `SessionUpdate` | 세션 설정 일부 갱신 | `sttw`, `ttsw`, `tfw` |
+| `session.updated` | `SessionUpdated` | update 반영 완료 알림 | `sttw`, `ttsw`, `tfw` -> `xgw` |
+| `session.end` | `SessionEnd` | 세션 종료 알림 | `sttw`, `ttsw`, `tfw` |
+
+`PlatformSetup.flow` 는 orchestration 과 version 을 직접 포함하고, XGW 는 이를 `route_lane` 과 `group_id` 계산 입력으로 사용한다.  
+`audio.input.sttTransport` 는 XGW -> STTW `audio.input.append` payload 형식을 고른다. `binary` 면 protobuf `audio`, `base64` 면 protobuf `audio_base64` 를 사용한다.  
+XGW 는 `session.setup.complete`, `session.updated` 를 worker 별로 그대로 relay 하지 않고, `{session_id, epoch, correlation_id, message type}` 기준으로 집계해 client 에 단일 완료 응답만 보낸다.  
+필수 worker 의 `error` 또는 timeout 이 발생하면 완료 응답 대신 단일 `error` 를 relay 한다.  
+`flow.version` 은 XGW 가 semver 로 해석하지 않고 routing profile catalog 와 exact match 로만 대조한다.  
+현재 `group_id` 가 새 `flow.version` 을 계속 지원하는 경우에만 같은 assignment 를 유지하고, 다른 `group_id` 재선택이 필요한 live migration 은 이번 단계에서 지원하지 않는다.  
+`session.resume` 은 이번 proto 범위에서 제외한다.  
+Redis checkpoint, epoch fencing, worker 재할당 정책이 함께 정리돼야 의미가 고정되므로 후속 TODO 로 관리한다.
+
+### 2.4 XGW <-> STT Worker
+
+XGW 는 client 가 보낸 음성 관련 메시지를 protobuf 로 publish 하고, STT Worker 는 관심 subject 만 구독하여 외부 STT Engine 규격으로 변환한다.
+
+| 발행 기준 | protobuf 메시지 | 설명 | 관심 worker 예시 |
+| --- | --- | --- | --- |
+| `audio.input.append` | `AudioInputAppend` | 사용자 오디오 chunk 전달. `sttTransport` 에 따라 binary/base64 payload 선택 | `sttw`, `ttsw` |
+| `audio.output` | `AudioOutput` | TTS 결과 오디오를 echo 참조용으로 구독 | `ttsw` -> `sttw` |
+| `event.input` | `EventInput` | `eventTarget=stt` 또는 공통 이벤트 전달 | `sttw` |
+| `audio.input.transcript` | `AudioInputTranscript` | partial/final transcript, word, vad 포함 응답 | `sttw` -> `xgw`, `ttsw`, `tfw` |
+| `error` | `ErrorMessage` | STT 처리 오류 응답 | `sttw` -> `xgw` |
+
+### 2.5 XGW <-> TTS Worker
+
+TTS Worker 역시 worker 전용 입력 메시지를 최소화한다.  
+TTS Worker 는 XGW 나 TFW 가 publish 한 공통 payload 를 읽고, client 응답 구조와 유사한 오디오 출력 메시지를 생성한다.
+
+| 발행 기준 | protobuf 메시지 | 설명 | 관심 worker 예시 |
+| --- | --- | --- | --- |
+| `audio.input.append` | `AudioInputAppend` | 사용자 오디오 입력 trace 참고 | `xgw` -> `ttsw` |
+| `audio.input.transcript` | `AudioInputTranscript` | transcript 기반 합성 준비/정책 참고 | `sttw` -> `ttsw` |
+| `text.output` | `TextOutput` | TFW 가 정리한 합성 대상 텍스트 | `tfw` -> `ttsw` |
+| `audio.output.stopped` | `AudioOutputStopped` | client playback stopped 피드백 | `xgw` -> `ttsw` |
+| `event.input` | `EventInput` | `eventTarget=tts` 또는 공통 이벤트 전달 | `ttsw` |
+| `audio.output` | `AudioOutput` | client 로 relay 가능한 합성 오디오 응답 | `ttsw` -> `xgw`, `sttw` |
+| `audio.output.stop` | `AudioOutputStop` | TFW 가 요청한 합성/재생 중지 제어 | `tfw` -> `xgw`, `ttsw` |
+| `error` | `ErrorMessage` | TTS 처리 오류 응답 | `ttsw` -> `xgw` |
+
+### 2.6 XGW <-> TF Worker
+
+TF Worker 는 transcript, direct text, 일반 이벤트를 모두 client 메시지 의미 그대로 구독한다.  
+TF Worker 의 출력은 `text.output`, `event.output`, `audio.output.stop` 같은 shared payload 를 우선 사용한다.
+
+| 발행 기준 | protobuf 메시지 | 설명 | 관심 worker 예시 |
+| --- | --- | --- | --- |
+| `audio.input.transcript` | `AudioInputTranscript` | STT transcript fan-out 입력 | `tfw`, `xgw`, `ttsw` |
+| `text.input.append` | `TextInputAppend` | direct text 입력 chunk | `tfw` |
+| `text.input.commit` | `TextInputCommit` | direct text 입력 완료 | `tfw` |
+| `event.input` | `EventInput` | `eventTarget=tf` 또는 공통 이벤트 전달 | `tfw` |
+| `audio.output.stopped` | `AudioOutputStopped` | client 재생 중단 피드백 | `tfw`, `ttsw` |
+| `text.output` | `TextOutput` | TFW 가 정리한 텍스트 출력 fan-out | `tfw` -> `xgw`, `ttsw` |
+| `event.output` | `EventOutput` | barge-in, agent 상태, 시스템 이벤트 응답 | `tfw` -> `xgw` |
+| `audio.output.stop` | `AudioOutputStop` | barge-in 등으로 client 재생 중지 요청 | `tfw` -> `xgw`, `ttsw` |
+| `error` | `ErrorMessage` | TF 처리 오류 응답 | `tfw` -> `xgw` |
+
+### 2.7 fan-out 원칙
+
+이 문서는 fan-out 대상의 빠른 참조만 유지한다.  
+subject naming, 실제 queue group, `eventTarget` 해석, relay 세부 정책은 [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md) 를 기준으로 본다.
+
+-   XGW 는 client 의미 기반 protobuf 메시지를 1회 publish 한다.
+-   worker 는 필요한 subject 만 구독하고 필요한 필드만 사용한다.
+-   worker 간 fan-out 도 `audio.input.transcript`, `text.output`, `audio.output`, `event.output` 같은 공통 메시지를 우선 사용한다.
+
+현재 Channel client 외부 계약에는 top-level `text.output` 이 없다.  
+따라서 XGW 는 `TextOutput` 을 기본적으로 내부 fan-out 용으로만 소비하고, TTS worker 가 없는 text/debug flow 에서만 final chunk 를 `event.output(eventName=text.output)` 으로 변환해 relay 한다.
+
+worker 응답의 client relay 기준은 아래처럼 고정한다.
+
+-   `session.setup.complete`, `session.updated` 는 worker 별 개별 응답을 직접 relay 하지 않고 집계 성공 시 단일 완료 응답만 relay
+-   `audio.input.transcript`, `audio.output`, `audio.output.stop`, `event.output` 은 payload 의미를 유지한 채 즉시 relay
+-   `error` 는 setup/update 집계 중에는 terminal failure 로 단일 relay 하고, 일반 streaming 경로에서는 즉시 relay
+-   `TextOutput` 은 기본적으로 relay 하지 않고, 필요한 경우에만 `event.output(eventName=text.output)` 으로 변환
+
+### 2.8 외부 엔진 매핑 기준
+
+| 내부 구간 | 외부 연동 대상 | 외부 프로토콜 | 비고 |
+| --- | --- | --- | --- |
+| `XGW <-> STTW` | `STT Worker <-> STT Engine` | WebSocket | `interface.stt.sktelecom.md` 기준 |
+| `XGW <-> TTSW` | `TTS Worker <-> TTS Engine` | WebSocket | `interface.tts.sktelecom.md` 기준 |
+| `XGW <-> TFW` | `TF Worker <-> TF Engine` | gRPC | `interface.lvtf.sktelecom.md` 기준 |
+
+### 2.9 운영 고려사항
+
+-   운영 시 subject naming, subscribe pattern, failover, stale epoch 기준은 [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md) 를 단일 기준으로 사용한다.
+-   resume 은 내부 제어 평면 개념으로 유지하며, Redis checkpoint, epoch fencing, 엔진 재연결 범위가 함께 정의될 때만 도입한다.
