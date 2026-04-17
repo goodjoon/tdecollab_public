@@ -56,12 +56,13 @@ export class MarkdownToStorageConverter {
             const isExternal = src.startsWith('http://') || src.startsWith('https://');
 
             // 외부 URL이면 URL 매크로, 아니면 첨부파일 매크로
+            const altAttr = alt ? ` ac:alt="${this.md.utils.escapeHtml(alt)}"` : '';
             if (isExternal) {
-                return `<ac:image><ri:url ri:value="${src}" /></ac:image>`;
+                return `<ac:image${altAttr}><ri:url ri:value="${src}" /></ac:image>`;
             } else {
                 // filename can just be the basename of the src path
                 const filename = src.split('/').pop() || src;
-                return `<ac:image><ri:attachment ri:filename="${filename}" /></ac:image>`;
+                return `<ac:image${altAttr}><ri:attachment ri:filename="${filename}" /></ac:image>`;
             }
         };
 

@@ -105,8 +105,16 @@ export class StorageToMarkdownConverter {
             .replace(/<\/ac:parameter>/gi, '</div>')
             .replace(/<ac:plain-text-body>/gi, '<pre data-macro-body>')
             .replace(/<\/ac:plain-text-body>/gi, '</pre>')
-            .replace(/<ac:image[^>]*>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, '<img src="$1" alt="$1" />')
-            .replace(/<ac:image[^>]*>[\s\S]*?<ri:url\s+ri:value="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, '<img src="$1" alt="$1" />');
+            .replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
+                const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+                const alt = altMatch ? altMatch[1] : filename;
+                return `<img src="${filename}" alt="${alt}" />`;
+            })
+            .replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
+                const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+                const alt = altMatch ? altMatch[1] : '';
+                return `<img src="${url}" alt="${alt}" />`;
+            });
 
         // 2. JSDOM 파싱
         const dom = new JSDOM(processedHtml);
