@@ -372,6 +372,7 @@ make dev
 - [아키텍처](tdecollab-docs/architecture.md)
 - [인증 및 설정](tdecollab-docs/auth-and-config.md)
 - [MCP 서버 설계](tdecollab-docs/mcp-server-design.md)
+- [npm 패키지 등록(Publish) 가이드](tdecollab-docs/npm-publish-guide.md)
 - Confluence: [API 스펙](tdecollab-docs/confluence/api-spec.md) | [기능 정의](tdecollab-docs/confluence/features.md) | [MCP 도구](tdecollab-docs/confluence/mcp-tools.md)
 - JIRA: [API 스펙](tdecollab-docs/jira/api-spec.md) | [기능 정의](tdecollab-docs/jira/features.md) | [MCP 도구](tdecollab-docs/jira/mcp-tools.md)
 - GitLab: [API 스펙](tdecollab-docs/gitlab/api-spec.md) | [기능 정의](tdecollab-docs/gitlab/features.md) | [MCP 도구](tdecollab-docs/gitlab/mcp-tools.md)
