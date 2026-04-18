@@ -1,6 +1,6 @@
 {
   "name": "tdecollab",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Confluence, Jira, GitLab CLI 및 MCP 통합 도구",
   "keywords": [
     "mcp",
@@ -12,8 +12,8 @@
   ],
   "type": "module",
   "bin": {
-    "tdecollab": "./dist/cli.js",
-    "tdecollab-server": "./dist/index.js"
+    "tdecollab": "dist/cli.js",
+    "tdecollab-server": "dist/index.js"
   },
   "files": [
     "dist"
