@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
-import { JiraSearchApi } from '../../../src/jira/api/search.js';
+import { JiraSearchApi } from '../../../tools/jira/api/search.js';
 
 describe('JiraSearchApi', () => {
     const client = axios.create();

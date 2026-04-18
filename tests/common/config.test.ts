@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { loadConfluenceConfig, loadJiraConfig, loadGitlabConfig } from '../../src/common/config.js';
+import { loadConfluenceConfig, loadJiraConfig, loadGitlabConfig } from '../../tools/common/config.js';
 
 describe('Config Loader', () => {
     const originalEnv = process.env;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
-import { ConfluenceContentApi } from '../../../src/confluence/api/content.js';
+import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
 
 describe('ConfluenceContentApi', () => {
     const mockAxios = new MockAdapter(axios);

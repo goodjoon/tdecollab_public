@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { ImageDownloader } from '../../../src/confluence/utils/image-downloader.js';
-import { ConfluenceContentApi } from '../../../src/confluence/api/content.js';
+import { ImageDownloader } from '../../../tools/confluence/utils/image-downloader.js';
+import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
 
 describe('ImageDownloader', () => {
     const mockApi = {

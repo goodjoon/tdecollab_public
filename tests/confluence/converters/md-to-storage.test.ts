@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarkdownToStorageConverter } from '../../../src/confluence/converters/md-to-storage.js';
+import { MarkdownToStorageConverter } from '../../../tools/confluence/converters/md-to-storage.js';
 
 describe('MarkdownToStorageConverter', () => {
     const converter = new MarkdownToStorageConverter();

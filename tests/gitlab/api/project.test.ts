@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
-import { GitlabProjectApi } from '../../../src/gitlab/api/project.js';
+import { GitlabProjectApi } from '../../../tools/gitlab/api/project.js';
 
 describe('GitlabProjectApi', () => {
     const client = axios.create();
