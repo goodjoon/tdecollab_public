@@ -15,6 +15,7 @@ description: "Task list template for feature implementation"
 
 **Purpose**: 프로젝트 모노레포 구조 초기화 및 기반 설정
 
+<<<<<<< HEAD
 - [ ] T001 기존 `src/` 디렉토리를 `tools/` 로 이름 변경하여 MCP 프로젝트로 재정의
 - [ ] T002 `frontend/` 디렉토리 생성 및 Next.js 프로젝트 초기화
 - [ ] T003 `backend/` 디렉토리 생성 및 FastAPI 프로젝트 초기화
@@ -22,6 +23,15 @@ description: "Task list template for feature implementation"
 - [ ] T005 [P] `frontend/` Tailwind CSS 및 React 컴포넌트 프레임워크(shadcn/ui 등) 설정
 - [ ] T006 [P] `backend/` PostgreSQL 데이터베이스 및 ORM (SQLAlchemy) 연동 설정
 - [ ] T007 `backend/` CORS 및 기본 보안 미들웨어 설정
+=======
+- [x] T001 기존 `src/` 디렉토리를 `tools/` 로 이름 변경하여 MCP 프로젝트로 재정의
+- [x] T002 `frontend/` 디렉토리 생성 및 Next.js 프로젝트 초기화
+- [x] T003 `backend/` 디렉토리 생성 및 FastAPI 프로젝트 초기화
+- [x] T004 [P] 최상위 모노레포 빌드/실행 환경 구성 (pnpm workspaces 혹은 Makefile)
+- [x] T005 [P] `frontend/` Tailwind CSS 및 React 컴포넌트 프레임워크(shadcn/ui 등) 설정
+- [x] T006 [P] `backend/` PostgreSQL 데이터베이스 및 ORM (SQLAlchemy) 연동 설정
+- [x] T007 `backend/` CORS 및 기본 보안 미들웨어 설정
+>>>>>>> 001-agentic-prd-harness
 
 ---
 
@@ -29,11 +39,11 @@ description: "Task list template for feature implementation"
 
 **Purpose**: 모든 User Story가 의존하는 공통 데이터 모델 및 코어 모듈
 
-- [ ] T008 `backend/app/models/` 에 `SpecificationDocument` 및 `DevelopmentTask` 엔티티 정의
-- [ ] T009 `backend/app/models/` 에 `SyncState` (GitLab Polling용) 엔티티 정의
-- [ ] T010 [P] 데이터베이스 마이그레이션 스크립트 작성 및 실행 (Alembic)
-- [ ] T011 [P] `tools/` 하위의 JIRA, Confluence, GitLab MCP 래퍼와 `backend/` 간의 내부 API 호출 클라이언트 구성
-- [ ] T012 `frontend/src/services/` 에 Backend 연동을 위한 axios 기반 API 클라이언트 초기화
+- [x] T008 `backend/app/models/` 에 `SpecificationDocument` 및 `DevelopmentTask` 엔티티 정의
+- [x] T009 `backend/app/models/` 에 `SyncState` (GitLab Polling용) 엔티티 정의
+- [x] T010 [P] 데이터베이스 마이그레이션 스크립트 작성 및 실행 (Alembic)
+- [x] T011 [P] `tools/` 하위의 JIRA, Confluence, GitLab MCP 래퍼와 `backend/` 간의 내부 API 호출 클라이언트 구성
+- [x] T012 `frontend/src/services/` 에 Backend 연동을 위한 axios 기반 API 클라이언트 초기화
 
 ---
 

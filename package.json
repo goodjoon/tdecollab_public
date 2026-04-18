@@ -21,10 +21,10 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsup",
-    "dev": "tsx watch src/index.ts",
-    "cli": "tsx src/cli.ts",
-    "lint": "eslint src/",
-    "format": "prettier --write 'src/**/*.ts'",
+    "dev": "tsx watch tools/index.ts",
+    "cli": "tsx tools/cli.ts",
+    "lint": "eslint tools/",
+    "format": "prettier --write 'tools/**/*.ts'",
     "test": "vitest",
     "test:run": "vitest run"
   },

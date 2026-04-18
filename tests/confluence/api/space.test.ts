@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
-import { ConfluenceSpaceApi } from '../../../src/confluence/api/space.js';
+import { ConfluenceSpaceApi } from '../../../tools/confluence/api/space.js';
 
 describe('ConfluenceSpaceApi', () => {
     const client = axios.create();

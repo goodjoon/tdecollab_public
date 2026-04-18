@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
-import { GitlabMergeRequestApi } from '../../../src/gitlab/api/merge-request.js';
+import { GitlabMergeRequestApi } from '../../../tools/gitlab/api/merge-request.js';
 
 describe('GitlabMergeRequestApi', () => {
     const client = axios.create();

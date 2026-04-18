@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
-import { createHttpClient } from '../../src/common/http-client.js';
-import { ApiError, AuthError, NotFoundError } from '../../src/common/errors.js';
+import { createHttpClient } from '../../tools/common/http-client.js';
+import { ApiError, AuthError, NotFoundError } from '../../tools/common/errors.js';
 
 describe('HTTP Client', () => {
     const mockAxios = new MockAdapter(axios);

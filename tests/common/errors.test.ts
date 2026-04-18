@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TdeCollabError, ApiError, AuthError, NotFoundError, ConflictError } from '../../src/common/errors.js';
+import { TdeCollabError, ApiError, AuthError, NotFoundError, ConflictError } from '../../tools/common/errors.js';
 
 describe('Error Classes', () => {
     it('should inherit from Error', () => {

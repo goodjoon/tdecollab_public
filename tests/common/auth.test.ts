@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createBasicAuthHeader, createBearerAuthHeader, getAuthHeader } from '../../src/common/auth.js';
+import { createBasicAuthHeader, createBearerAuthHeader, getAuthHeader } from '../../tools/common/auth.js';
 
 describe('Auth Helpers', () => {
     it('should create basic auth header', () => {

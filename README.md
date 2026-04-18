@@ -316,7 +316,7 @@ pnpm format
 ## 프로젝트 구조
 
 ```
-src/
+tools/                # (기존 src/) 사내 시스템 연계용 Tool & MCP
 ├── index.ts          # MCP 서버 엔트리포인트
 ├── cli.ts            # CLI 엔트리포인트
 ├── common/           # 공통 모듈 (인증, HTTP, 설정, 에러)
@@ -324,7 +324,46 @@ src/
 ├── jira/             # JIRA 모듈 (api/tools/commands)
 ├── gitlab/           # GitLab 모듈 (api/tools/commands)
 └── mcp/              # MCP 서버 코어
+
+backend/              # Agentic PRD Harness 백엔드 (Python/FastAPI)
+├── app/
+│   ├── api/          # 엔드포인트 및 라우터
+│   ├── core/         # 비즈니스 로직, 데이터베이스, AI 연동
+│   ├── models/       # 데이터 모델 (SQLAlchemy)
+│   └── webhooks/     # GitLab Webhook 연동
+└── tests/
+
+frontend/             # Agentic PRD Harness 프론트엔드 (React/Next.js)
+├── src/
+│   ├── components/   # UI 컴포넌트 (shadcn/ui)
+│   ├── pages/        # 웹 페이지
+│   └── services/     # 백엔드 API 호출
+└── tests/
 ```
+
+## 실행 방법 (Agentic PRD Harness)
+
+새롭게 추가된 기획 문서 관리 및 개발 연동 웹 UI를 실행하는 방법입니다.
+
+### 1. 필수 요구사항
+- Node.js 20+
+- Python 3.11+
+- pnpm
+
+### 2. 초기 셋업
+가상환경(venv)을 생성하고 프론트엔드/백엔드 패키지를 모두 설치합니다.
+```bash
+make setup
+```
+
+### 3. 서버 실행
+MCP, 백엔드(FastAPI), 프론트엔드(Next.js)를 동시에 실행합니다.
+```bash
+make dev
+```
+- **Frontend URL**: [http://localhost:3000](http://localhost:3000)
+- **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
 
 ## 문서
 
@@ -333,6 +372,7 @@ src/
 - [아키텍처](tdecollab-docs/architecture.md)
 - [인증 및 설정](tdecollab-docs/auth-and-config.md)
 - [MCP 서버 설계](tdecollab-docs/mcp-server-design.md)
+- [npm 패키지 등록(Publish) 가이드](tdecollab-docs/npm-publish-guide.md)
 - Confluence: [API 스펙](tdecollab-docs/confluence/api-spec.md) | [기능 정의](tdecollab-docs/confluence/features.md) | [MCP 도구](tdecollab-docs/confluence/mcp-tools.md)
 - JIRA: [API 스펙](tdecollab-docs/jira/api-spec.md) | [기능 정의](tdecollab-docs/jira/features.md) | [MCP 도구](tdecollab-docs/jira/mcp-tools.md)
 - GitLab: [API 스펙](tdecollab-docs/gitlab/api-spec.md) | [기능 정의](tdecollab-docs/gitlab/features.md) | [MCP 도구](tdecollab-docs/gitlab/mcp-tools.md)
