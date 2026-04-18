@@ -2,7 +2,7 @@
 
 setup:
 	pnpm install
-	cd backend && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt
+	cd backend && python3.13 -m venv venv && . venv/bin/activate && pip install -r requirements.txt
 
 dev:
 	pnpm run dev & make dev-backend & make dev-frontend
