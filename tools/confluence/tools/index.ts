@@ -1,5 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 import { ConfluenceContentApi } from '../api/content.js';
 import { ConfluenceSpaceApi } from '../api/space.js';
 import { ConfluenceSearchApi } from '../api/search.js';
@@ -7,6 +9,7 @@ import { ConfluenceLabelApi } from '../api/label.js';
 import { createConfluenceClient } from '../api/client.js';
 import { MarkdownToStorageConverter } from '../converters/md-to-storage.js';
 import { StorageToMarkdownConverter } from '../converters/storage-to-md.js';
+import { AIConversionService } from '../converters/ai-refiner.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import { logger } from '../../common/logger.js';
 
@@ -129,24 +132,79 @@ export function registerConfluenceTools(server: McpServer) {
             'TDE Confluence 페이지를 수정합니다. Markdown 형식의 내용으로 업데이트할 수 있습니다.',
             {
                 pageId: z.string().describe('페이지 ID'),
-                title: z.string().describe('페이지 제목'),
+                title: z.string().optional().describe('페이지 제목 (생략 시 기존 제목 유지)'),
                 content: z.string().describe('페이지 내용 (Markdown)'),
-                version: z.number().describe('현재 페이지 버전 (충돌 방지용)'),
+                version: z.number().optional().describe('현재 페이지 버전 (생략 시 자동 조회)'),
+                useAiFallback: z.boolean().optional().describe('복잡한 변환을 위해 AI를 사용할지 여부'),
+                baseDir: z.string().optional().describe('로컬 이미지를 찾을 기준 디렉토리 절대 경로'),
             },
-            async ({ pageId, title, content, version }) => {
-                const storageBody = mdToStorage.convert(content);
+            async ({ pageId, title, content, version, useAiFallback, baseDir }) => {
+                let currentVersion = version;
+                let currentTitle = title;
+                
+                if (currentVersion === undefined || !currentTitle) {
+                    const currentPage = await contentApi.getPage(pageId, ['version', 'title']);
+                    if (currentVersion === undefined) {
+                        currentVersion = currentPage.version?.number ?? 1;
+                    }
+                    if (!currentTitle) {
+                        currentTitle = currentPage.title;
+                    }
+                }
+
+                let storageBody = mdToStorage.convert(content);
+                
+                if (useAiFallback) {
+                    const aiResult = await aiService.refine({
+                        sourceContent: content,
+                        sourceType: 'markdown',
+                        targetType: 'storage-xml',
+                        context: 'Confluence Storage XML 형식으로 변환해주세요. Mermaid는 mermaiddiagram 매크로를 사용하세요.'
+                    });
+                    storageBody = aiResult.convertedContent;
+                }
+
                 const page = await contentApi.updatePage({
                     id: pageId,
-                    title,
+                    title: currentTitle,
                     body: storageBody,
-                    version
+                    version: currentVersion
                 });
+
+                let imageUploadLog = '';
+                if (baseDir) {
+                    const localImages = mdToStorage.extractLocalImages(content);
+                    if (localImages.length > 0) {
+                        imageUploadLog += `\n\n로컬 이미지 업로드 (${localImages.length}개):`;
+                        for (const imgSrc of localImages) {
+                            try {
+                                const imagePath = path.resolve(baseDir, imgSrc);
+                                if (fs.existsSync(imagePath)) {
+                                    const fileBuffer = fs.readFileSync(imagePath);
+                                    const filename = path.basename(imgSrc);
+                                    let contentType = 'application/octet-stream';
+                                    if (filename.endsWith('.png')) contentType = 'image/png';
+                                    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+                                    else if (filename.endsWith('.svg')) contentType = 'image/svg+xml';
+                                    else if (filename.endsWith('.gif')) contentType = 'image/gif';
+
+                                    await contentApi.uploadAttachment(page.id, filename, fileBuffer, contentType);
+                                    imageUploadLog += `\n  - 성공: ${filename}`;
+                                } else {
+                                    imageUploadLog += `\n  - 실패 (파일 없음): ${imagePath}`;
+                                }
+                            } catch (uploadErr: any) {
+                                imageUploadLog += `\n  - 업로드 실패 (${imgSrc}): ${(uploadErr as Error).message}`;
+                            }
+                        }
+                    }
+                }
 
                 return {
                     content: [
                         {
                             type: 'text',
-                            text: `페이지 수정 성공: ${page.title} (Version: ${page.version?.number})`,
+                            text: `페이지 수정 성공: ${page.title} (Version: ${page.version?.number})${imageUploadLog}`,
                         },
                     ],
                 };
