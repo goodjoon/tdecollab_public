@@ -37,8 +37,18 @@
 | `GITLAB_BASE_URL` | O | GitLab 서버 URL | `https://gitlab.tde.sktelecom.com` |
 | `GITLAB_PRIVATE_TOKEN` | O | Personal Access Token | |
 
-### 1.3 .env 파일 구조
-프로젝트 루트의 `.env` 파일에 모든 서비스의 환경변수를 통합 관리한다. `.env.example`을 복사하여 사용.
+### 1.3 설정 파일 로드 우선순위
+tdecollab은 실행 시 다음 순서로 설정을 로드한다.
+
+| 우선순위 | 위치 | 용도 |
+|----------|------|------|
+| 1 | 셸 환경변수 / MCP `env` | 실행 환경에서 명시적으로 주입한 값 |
+| 2 | `./tdecollab.env` | 현재 작업 디렉토리 기준 프로젝트별 설정 |
+| 3 | `~/.config/tdecollab/.env` | 사용자 글로벌 기본 설정 |
+
+환경변수 로더는 상위 우선순위 값이 이미 존재하면 하위 우선순위 파일의 같은 키로 덮어쓰지 않는다.
+따라서 임시 실행값은 셸 환경변수로 지정하고, 프로젝트별 기본값은 `tdecollab.env`, 개인 기본값은
+`~/.config/tdecollab/.env`에 둔다.
 
 ## 2. Confluence 인증
 

@@ -1,3 +1,5 @@
+# package.json 의 "files": ["dist"] 화이트리스트가 우선 적용된다.
+# 이 파일은 화이트리스트가 제거되었을 때를 대비한 방어선 + 의도 명시용이다.
 
 # Security / Sensitivity
 .env
@@ -6,14 +8,49 @@
 *.pem
 *.secret
 
-# Source & Config
+# Source / Tests / Configs (런타임에 불필요)
+tools/
+tests/
+backend/
+frontend/
 src/
 test/
+*.tsbuildinfo
 tsconfig.json
 tsup.config.ts
 vitest.config.ts
 .eslintrc.js
+.eslintrc.cjs
 .prettierrc
+.prettierrc.*
+Makefile
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Internal / Project Docs (npm 페이지에 노출 불필요)
+DEVELOPMENT.md
+tdecollab-docs/
+docs/
+.github/
+.gitlab/
+.gitlab-ci.yml
+
+# AI Agent / 어시스턴트 운영 지침 (사용자 무관)
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.clinerules
+.windsurfrules
+.codeium/
+.ai/
+.claude/
+.obsidian/
+
+# 사용자/세션 로컬 데이터
+.tdecollab.json
+.tdecollab_history.json
+90.Repository/
 
 # OS / Editor
 .DS_Store
@@ -29,13 +66,4 @@ pnpm-debug.log*
 # Git
 .git/
 .gitignore
-
-# AI Agents
-.cursorrules
-.clinerules
-.windsurfrules
-.codeium/
-.ai/
-AGENTS.md
-CLAUDE.md
-GEMINI.md
+.gitattributes

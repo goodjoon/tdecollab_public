@@ -1,8 +1,9 @@
-import dotenv from 'dotenv';
 import { ConfluenceConfig, GitlabConfig, JiraConfig } from './types.js';
 import { logger } from './logger.js';
+import { loadEnv } from './env-loader.js';
 
-dotenv.config();
+// 환경변수 로드 (우선순위: shell env > ./tdecollab.env > ~/.config/tdecollab/.env)
+loadEnv();
 
 // 환경변수 조회 및 미설정 시 에러 발생
 function getEnvOrThrow(key: string, description: string): string {

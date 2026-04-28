@@ -1,6 +1,10 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # tdecollab AGENTS Guide
 
-이 문서는 Codex가 `/Users/goodjoon/develop/personal/tdecollab` 저장소에서 작업할 때 따라야 하는 운영 규칙이다.
+이 문서는 AI Agent가 이 저장소에서 작업할 때 따라야 하는 운영 규칙이다.
 
 ## 언어 규칙
 - 모든 응답과 문서는 한국어로 작성한다.
@@ -16,86 +20,120 @@
 
 ## 프로젝트 개요
 - 목적: TDE 포털의 Confluence, JIRA, GitLab을 CLI 및 MCP 서버로 통합 제공
-- 언어/런타임: TypeScript, Node.js
-- 아키텍처: service별 `api/`, `tools/`, `commands/` 3-layer 구조
+- 언어/런타임: TypeScript (strict mode), Node.js ≥ 20, ESM
+- 빌드: `tsup` (entry: `tools/index.ts`, `tools/cli.ts` → `dist/`)
+- 개발 실행: `tsx` (watch mode)
 
 ## 빌드/실행 명령
+
 ```bash
-pnpm install
-pnpm build
-pnpm dev
-pnpm cli
-pnpm test
-pnpm test:run
-pnpm format
+pnpm install          # 의존성 설치
+pnpm build            # tsup으로 dist/ 빌드
+pnpm dev              # tsx watch로 MCP 서버 개발 실행
+pnpm cli              # tsx로 CLI 직접 실행
+pnpm lint             # ESLint 실행
+pnpm format           # Prettier 포맷
+pnpm test             # vitest watch 모드
+pnpm test:run         # vitest 단일 실행 (CI용)
 ```
 
-## 프로젝트 구조
+특정 테스트 파일만 실행:
+```bash
+pnpm test:run tools/confluence/converters/__tests__/storage-to-md.spec.ts
 ```
-src/
+
+## 환경 설정
+
+`.env.example`을 복사해 `.env`를 만든 뒤 토큰을 채워넣는다:
+
+| 환경변수 | 설명 |
+|---|---|
+| `CONFLUENCE_BASE_URL` | Confluence 서버 URL |
+| `CONFLUENCE_API_TOKEN` | PAT 토큰 (Bearer 인증) |
+| `CONFLUENCE_USERNAME` | Basic Auth 시만 필요 (PAT 사용 시 생략) |
+| `CONFLUENCE_MERMAID_MACRO_NAME` | Mermaid 매크로명 (기본: `mermaiddiagram`) |
+| `JIRA_BASE_URL` | JIRA 서버 URL |
+| `JIRA_API_TOKEN` | PAT 토큰 |
+| `GITLAB_BASE_URL` | GitLab 서버 URL |
+| `GITLAB_PRIVATE_TOKEN` | Private Token (`glpat-…`) |
+| `AI_PROVIDER` | `openai` 또는 `anthropic` (기본: `openai`) |
+| `AI_MODEL` | 사용할 모델 (기본: `gpt-4o`) |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | AI 변환 기능 사용 시 필수 |
+
+## 프로젝트 구조
+
+소스 코드는 `tools/`에 위치한다 (`src/` 아님).
+
+```
+tools/
 ├── index.ts                  # MCP 서버 엔트리포인트
 ├── cli.ts                    # CLI 엔트리포인트
 ├── common/                   # 공통 인프라
-│   ├── config.ts
-│   ├── auth.ts
-│   ├── http-client.ts
-│   ├── errors.ts
-│   ├── types.ts
-│   └── logger.ts
-├── confluence/               # Confluence 모듈
-│   ├── api/
-│   ├── tools/
-│   ├── converters/
-│   └── commands/
+│   ├── config.ts             # 환경변수 로드 (loadConfluenceConfig 등)
+│   ├── auth.ts               # 인증 헤더 생성 유틸
+│   ├── http-client.ts        # axios 인스턴스 팩토리 (인터셉터 포함)
+│   ├── errors.ts             # ApiError, AuthError 등 커스텀 에러
+│   ├── types.ts              # ServiceConfig 등 공통 타입
+│   └── logger.ts             # 로거
+├── confluence/
+│   ├── api/                  # REST API 클라이언트 (content, space, search, label)
+│   ├── tools/index.ts        # MCP tool 등록
+│   ├── commands/index.ts     # CLI command 등록
+│   ├── converters/           # Markdown ↔ Storage XML 변환 (핵심 로직)
+│   │   ├── md-to-storage.ts  # Markdown → Confluence Storage XML
+│   │   ├── storage-to-md.ts  # Confluence Storage XML → Markdown (turndown)
+│   │   ├── ai-refiner.ts     # AI 기반 변환 보정 (OpenAI/Anthropic)
+│   │   └── __tests__/        # 현재 테스트가 존재하는 유일한 위치
+│   └── utils/image-downloader.ts
 ├── jira/                     # JIRA 모듈 (api/tools/commands)
 ├── gitlab/                   # GitLab 모듈 (api/tools/commands)
-└── mcp/                      # MCP 서버 코어
-    ├── server.ts
-    ├── transport.ts
-    └── tool-registry.ts
+└── mcp/server.ts             # McpServer + StdioServerTransport 초기화
 ```
 
-## 아키텍처 규칙
-- `api/`: 순수 REST API client. HTTP 요청/응답 책임만 가진다.
-- `tools/`: MCP tool 정의. Zod schema 검증 후 `api/` 호출 결과를 MCP 응답으로 래핑한다.
-- `commands/`: CLI command 정의. `api/` 호출 결과를 터미널 출력으로 포매팅한다.
-- cross-layer 책임 침범을 피한다.
+## 아키텍처 핵심 규칙
+
+**3-layer 구조** — 각 서비스(`confluence/`, `jira/`, `gitlab/`)는 동일한 레이어를 가진다:
+
+| 레이어 | 책임 | 금지 |
+|---|---|---|
+| `api/` | 순수 HTTP 요청/응답 | 포매팅, MCP 응답 |
+| `tools/` | Zod schema 검증 → `api/` 호출 → MCP 응답 래핑 | CLI 출력 |
+| `commands/` | `api/` 호출 → 터미널 출력 포매팅 (chalk, cli-table3) | MCP 응답 |
+
+**Optional module 패턴**: `tools/` 및 `commands/`의 `registerXxxTools/Commands`는 환경변수 미설정 시 예외를 throw하지 않고 경고 로그 후 등록을 건너뛴다. MCP 서버는 설정된 서비스만 활성화된다.
+
+**인증 흐름**: `http-client.ts`의 axios 요청 인터셉터가 `ServiceConfig.auth`를 읽어 자동 주입한다. GitLab은 `PRIVATE-TOKEN` 헤더를 사용 (Bearer 아님); `gitlab/api/client.ts`에서 헤더를 직접 설정한다.
+
+**Confluence 변환 파이프라인**:
+1. `MarkdownToStorageConverter` — `markdown-it` 커스텀 렌더러로 Mermaid/PlantUML/코드블록을 Confluence 매크로 XML로 변환
+2. `StorageToMarkdownConverter` — `turndown` + GFM 플러그인으로 Storage XML → Markdown
+3. `AIConversionService` — 변환 결과 보정이 필요할 때 선택적으로 사용 (`useAiFallback: true`)
+
+## MCP 서버 설정 (Claude Desktop)
+
+`dist/` 빌드 후 Claude Desktop `claude_desktop_config.json`에 추가:
+
+```json
+{
+  "mcpServers": {
+    "tdecollab": {
+      "command": "node",
+      "args": ["/절대경로/tdecollab/dist/index.js"],
+      "env": {
+        "CONFLUENCE_BASE_URL": "...",
+        "CONFLUENCE_API_TOKEN": "..."
+      }
+    }
+  }
+}
+```
 
 ## 코딩 스타일
-- TypeScript strict mode 유지
-- ESM (`import`/`export`) 사용
-- Prettier 규칙 준수
-  - `semi: true`
-  - `singleQuote: true`
-  - `trailingComma: all`
-  - `printWidth: 100`
-- MCP tool naming은 `{service}_{action}_{resource}` 패턴 사용
-  - 예: `confluence_get_page`
-
-## 핵심 의존성
-- `@modelcontextprotocol/sdk`
-- `zod`
-- `axios`
-- `commander`
-- `dotenv`
-- `markdown-it`
-
-## TDE 환경 정보
-- Confluence: `https://confluence.tde.sktelecom.com` (Server/DC, REST API v1)
-- JIRA: `https://jira.tde.sktelecom.com` (Server/DC, REST API v2)
-- GitLab: `https://gitlab.tde.sktelecom.com` (Self-hosted, API v4)
-- 인증
-  - Confluence/JIRA: HTTP Basic Auth (`email:token`)
-  - GitLab: `PRIVATE-TOKEN` header
-
-## 변경 작업 원칙
-- 기존 구조와 module 경계를 우선 유지한다.
-- 설정/인증/HTTP 공통 로직은 `src/common/`에 둔다.
-- 기능 추가 시 가능한 한 service module 내부(`confluence/`, `jira/`, `gitlab/`)에서 캡슐화한다.
-- 문서/코드 변경 시 관련 테스트 또는 검증 명령(`pnpm test`, 필요 시 `pnpm test:run`)을 우선 수행한다.
+- Prettier 규칙: `semi: true`, `singleQuote: true`, `trailingComma: all`, `printWidth: 100`
+- MCP tool naming: `{service}_{action}_{resource}` (예: `confluence_get_page`, `jira_create_issue`)
+- 모든 파일은 `.js` 확장자로 import (ESM + tsup 빌드 규칙)
 
 ## 커밋 규칙
-- 커밋 메시지 형식: `<type>(<scope>): <설명>`
+- 형식: `<type>(<scope>): <한국어 설명>`
 - `type`: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
 - `scope`: `common`, `confluence`, `jira`, `gitlab`, `mcp`, `cli`
-- 설명은 한국어로 작성

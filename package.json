@@ -1,15 +1,27 @@
 {
   "name": "tdecollab",
-  "version": "0.2.3",
-  "description": "Confluence, Jira, GitLab CLI 및 MCP 통합 도구",
+  "version": "0.3.3",
+  "description": "Confluence, Jira, GitLab CLI / TUI / MCP 통합 도구",
   "keywords": [
     "mcp",
     "mcp-server",
     "confluence",
     "jira",
     "gitlab",
-    "cli"
+    "cli",
+    "tui",
+    "ink"
   ],
+  "license": "MIT",
+  "author": "goodjoon <goodjoon@gmail.com>",
+  "homepage": "https://github.com/goodjoon/tdecollab#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goodjoon/tdecollab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/goodjoon/tdecollab/issues"
+  },
   "type": "module",
   "bin": {
     "tdecollab": "dist/cli.js",
@@ -43,7 +55,6 @@
     "jsdom": "^29.0.2",
     "markdown-it": "^14.1.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
     "zod": "^3.24.2"

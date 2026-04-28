@@ -40,8 +40,12 @@ async function main() {
   cleanup();
 }
 
-main().catch((err) => {
+// top-level await 로 main() 을 끝까지 대기한다.
+// 이렇게 해야 cli.ts 에서 `await import('./tui/index.js')` 가 main() 완료 시점까지 블로킹된다.
+try {
+  await main();
+} catch (err) {
   cleanup();
   console.error('TUI 시작 실패:', err);
   process.exit(1);
-});
+}

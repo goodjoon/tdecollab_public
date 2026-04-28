@@ -47,9 +47,6 @@ importers:
       react:
         specifier: 19.2.4
         version: 19.2.4
-      react-dom:
-        specifier: 19.2.4
-        version: 19.2.4(react@19.2.4)
       turndown:
         specifier: ^7.2.4
         version: 7.2.4
@@ -5099,7 +5096,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 22.19.11
 
   '@types/statuses@2.0.6': {}
 
