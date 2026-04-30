@@ -58,6 +58,47 @@ describe('StorageToMarkdownConverter', () => {
         expect(md).toContain('```');
     });
 
+    describe('expand 매크로 변환', () => {
+        it('제목과 본문을 details/summary 태그로 변환한다', () => {
+            const html = `
+                <ac:structured-macro ac:name="expand">
+                    <ac:parameter ac:name="title">SIP 흐름</ac:parameter>
+                    <ac:rich-text-body><p>본문 내용입니다.</p></ac:rich-text-body>
+                </ac:structured-macro>
+            `;
+            const md = converter.convert(html);
+            expect(md).toContain('<details>');
+            expect(md).toContain('<summary>SIP 흐름</summary>');
+            expect(md).toContain('본문 내용입니다.');
+            expect(md).toContain('</details>');
+        });
+
+        it('title 파라미터가 없으면 기본값 "더보기"를 사용한다', () => {
+            const html = `
+                <ac:structured-macro ac:name="expand">
+                    <ac:rich-text-body><p>내용</p></ac:rich-text-body>
+                </ac:structured-macro>
+            `;
+            const md = converter.convert(html);
+            expect(md).toContain('<summary>더보기</summary>');
+        });
+
+        it('본문의 표·목록 등 복합 콘텐츠도 Markdown으로 변환한다', () => {
+            const html = `
+                <ac:structured-macro ac:name="expand">
+                    <ac:parameter ac:name="title">세부 내용</ac:parameter>
+                    <ac:rich-text-body>
+                        <ul><li>항목 1</li><li>항목 2</li></ul>
+                    </ac:rich-text-body>
+                </ac:structured-macro>
+            `;
+            const md = converter.convert(html);
+            expect(md).toContain('<summary>세부 내용</summary>');
+            expect(md).toContain('항목 1');
+            expect(md).toContain('항목 2');
+        });
+    });
+
     describe('JIRA 매크로 변환', () => {
         const jiraXml = `
             <ac:structured-macro ac:name="jira" ac:schema-version="1">

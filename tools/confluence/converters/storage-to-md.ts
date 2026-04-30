@@ -99,6 +99,15 @@ export class StorageToMarkdownConverter {
                     return `\n\`\`\`plantuml\n${body.trim()}\n\`\`\`\n`;
                 }
 
+                if (macroName === 'expand') {
+                    const title = element.querySelector('[data-macro-param-name="title"]')?.textContent?.trim() || '더보기';
+                    const richBody = element.querySelector('[data-macro-rich-body]');
+                    const bodyMd = richBody
+                        ? this.turndown.turndown(richBody.innerHTML).trim()
+                        : '';
+                    return `\n\n<details>\n<summary>${title}</summary>\n\n${bodyMd}\n\n</details>\n\n`;
+                }
+
                 if (macroName === 'jira') {
                     const key = element.querySelector('[data-macro-param-name="key"]')?.textContent?.trim();
                     if (key) {
@@ -134,6 +143,8 @@ export class StorageToMarkdownConverter {
             .replace(/<\/ac:parameter>/gi, '</div>')
             .replace(/<ac:plain-text-body>/gi, '<pre data-macro-body>')
             .replace(/<\/ac:plain-text-body>/gi, '</pre>')
+            .replace(/<ac:rich-text-body>/gi, '<div data-macro-rich-body>')
+            .replace(/<\/ac:rich-text-body>/gi, '</div>')
             .replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
                 const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
                 const alt = altMatch ? altMatch[1] : filename;
