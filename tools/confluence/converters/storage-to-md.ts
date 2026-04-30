@@ -2,10 +2,17 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { JSDOM } from 'jsdom';
 
+export interface StorageToMarkdownOptions {
+    /** JIRA 티켓 링크 생성에 사용할 베이스 URL (예: https://jira.example.com). 미설정 시 JIRA_BASE_URL 환경변수 사용. */
+    jiraBaseUrl?: string;
+}
+
 export class StorageToMarkdownConverter {
     private turndown: TurndownService;
+    private jiraBaseUrl: string;
 
-    constructor() {
+    constructor(options: StorageToMarkdownOptions = {}) {
+        this.jiraBaseUrl = options.jiraBaseUrl || process.env.JIRA_BASE_URL || '';
         this.turndown = new TurndownService({
             headingStyle: 'atx',
             hr: '---',
@@ -83,6 +90,16 @@ export class StorageToMarkdownConverter {
                     let body = element.querySelector('[data-macro-body]')?.textContent || '';
                     body = body.replace(/__CDATA_START__/g, '').replace(/__CDATA_END__/g, '');
                     return `\n\`\`\`plantuml\n${body.trim()}\n\`\`\`\n`;
+                }
+
+                if (macroName === 'jira') {
+                    const key = element.querySelector('[data-macro-param-name="key"]')?.textContent?.trim();
+                    if (key) {
+                        const base = this.jiraBaseUrl.replace(/\/$/, '');
+                        const url = base ? `${base}/browse/${key}` : `https://jira.atlassian.com/browse/${key}`;
+                        return ` [${key}](${url}) `;
+                    }
+                    return '';
                 }
 
                 return `\n<!-- Macro: ${macroName} -->\n`;

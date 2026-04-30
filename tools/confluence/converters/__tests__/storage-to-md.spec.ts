@@ -57,4 +57,65 @@ describe('StorageToMarkdownConverter', () => {
         expect(md).toContain('A --> B');
         expect(md).toContain('```');
     });
+
+    describe('JIRA 매크로 변환', () => {
+        const jiraXml = `
+            <ac:structured-macro ac:name="jira" ac:schema-version="1">
+                <ac:parameter ac:name="server">TDE Jira</ac:parameter>
+                <ac:parameter ac:name="serverId">5b2d9c8b-0000-0000-0000-000000000000</ac:parameter>
+                <ac:parameter ac:name="key">PROJ-1234</ac:parameter>
+            </ac:structured-macro>
+        `;
+
+        it('jiraBaseUrl 옵션으로 지정한 URL로 링크를 생성한다', () => {
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com' });
+            const md = conv.convert(jiraXml);
+            expect(md).toContain('[PROJ-1234](https://jira.example.com/browse/PROJ-1234)');
+        });
+
+        it('링크 앞뒤에 공백을 포함한다 (인라인 텍스트와 분리)', () => {
+            const inlineXml = `<p>앞 텍스트 <ac:structured-macro ac:name="jira" ac:schema-version="1"><ac:parameter ac:name="key">PROJ-1234</ac:parameter></ac:structured-macro> 뒤 텍스트</p>`;
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com' });
+            const md = conv.convert(inlineXml);
+            expect(md).toMatch(/ \[PROJ-1234\]\(https:\/\/jira\.example\.com\/browse\/PROJ-1234\) /);
+        });
+
+        it('JIRA_BASE_URL 환경변수를 fallback으로 사용한다', () => {
+            process.env.JIRA_BASE_URL = 'https://jira.env.example.com';
+            const conv = new StorageToMarkdownConverter();
+            const md = conv.convert(jiraXml);
+            expect(md).toContain('[PROJ-1234](https://jira.env.example.com/browse/PROJ-1234)');
+            delete process.env.JIRA_BASE_URL;
+        });
+
+        it('base URL 끝의 슬래시를 정규화한다', () => {
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com/' });
+            const md = conv.convert(jiraXml);
+            expect(md).toContain('[PROJ-1234](https://jira.example.com/browse/PROJ-1234)');
+        });
+
+        it('key 파라미터가 없는 경우 빈 문자열을 반환한다', () => {
+            const noKeyXml = `
+                <ac:structured-macro ac:name="jira" ac:schema-version="1">
+                    <ac:parameter ac:name="server">TDE Jira</ac:parameter>
+                </ac:structured-macro>
+            `;
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com' });
+            const md = conv.convert(noKeyXml);
+            expect(md).not.toContain('<!-- Macro: jira -->');
+            expect(md).not.toContain('/browse/');
+        });
+
+        it('인라인 위치(li 안)에서도 올바르게 링크를 삽입한다', () => {
+            const inlineXml = `
+                <ul>
+                    <li>(완료) <ac:structured-macro ac:name="jira" ac:schema-version="1"><ac:parameter ac:name="key">AIVOICEBOT-1195</ac:parameter></ac:structured-macro> → 배포 예정</li>
+                </ul>
+            `;
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.tde.sktelecom.com' });
+            const md = conv.convert(inlineXml);
+            expect(md).toContain('[AIVOICEBOT-1195](https://jira.tde.sktelecom.com/browse/AIVOICEBOT-1195)');
+            expect(md).toContain('배포 예정');
+        });
+    });
 });
