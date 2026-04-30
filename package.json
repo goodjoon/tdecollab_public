@@ -1,6 +1,6 @@
 {
   "name": "tdecollab",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Confluence, Jira, GitLab CLI / TUI / MCP 통합 도구",
   "keywords": [
     "mcp",
