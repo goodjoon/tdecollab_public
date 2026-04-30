@@ -8,6 +8,7 @@ import { ConfluenceLabelApi } from '../api/label.js';
 import { createConfluenceClient } from '../api/client.js';
 import { MarkdownToStorageConverter } from '../converters/md-to-storage.js';
 import { StorageToMarkdownConverter } from '../converters/storage-to-md.js';
+import { tryBuildJiraIssueMap } from '../converters/jira-enricher.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import { logger } from '../../common/logger.js';
 import chalk from 'chalk';
@@ -94,7 +95,8 @@ export function registerConfluenceCommands(program: Command) {
                         }
 
                         const storageToMd = new StorageToMarkdownConverter();
-                        content = storageToMd.convert(page.body.storage.value, imageUrlMap);
+                        const jiraIssueMap = await tryBuildJiraIssueMap(page.body.storage.value);
+                        content = storageToMd.convert(page.body.storage.value, imageUrlMap, jiraIssueMap);
                     } else {
                         if (!options.quiet) console.log(chalk.yellow('(No content)'));
                     }

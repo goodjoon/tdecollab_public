@@ -6,6 +6,7 @@ import { ConfluenceSearchApi } from '../../confluence/api/search.js';
 import { createConfluenceClient } from '../../confluence/api/client.js';
 import { MarkdownToStorageConverter } from '../../confluence/converters/md-to-storage.js';
 import { StorageToMarkdownConverter } from '../../confluence/converters/storage-to-md.js';
+import { tryBuildJiraIssueMap } from '../../confluence/converters/jira-enricher.js';
 import { ImageDownloader } from '../../confluence/utils/image-downloader.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import type { StepEntry, LogEntry } from '../state.js';
@@ -94,8 +95,11 @@ export async function executePageGet(
   }
 
   const converter = new StorageToMarkdownConverter();
+  const jiraIssueMap = page.body?.storage?.value
+    ? await tryBuildJiraIssueMap(page.body.storage.value)
+    : undefined;
   const markdown = page.body?.storage?.value
-    ? converter.convert(page.body.storage.value, imageUrlMap)
+    ? converter.convert(page.body.storage.value, imageUrlMap, jiraIssueMap)
     : '(No content)';
   addLog(makeLog('ok', `Markdown 변환 완료 (${markdown.split('\n').length} lines)`));
   steps[2] = { ...steps[2], state: 'done', detail: `${markdown.split('\n').length} lines` };

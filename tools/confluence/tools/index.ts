@@ -9,6 +9,7 @@ import { ConfluenceLabelApi } from '../api/label.js';
 import { createConfluenceClient } from '../api/client.js';
 import { MarkdownToStorageConverter } from '../converters/md-to-storage.js';
 import { StorageToMarkdownConverter } from '../converters/storage-to-md.js';
+import { tryBuildJiraIssueMap } from '../converters/jira-enricher.js';
 import { AIConversionService } from '../converters/ai-refiner.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import { logger } from '../../common/logger.js';
@@ -60,7 +61,8 @@ export function registerConfluenceTools(server: McpServer) {
                         imageInfo = `\n\n다운로드된 이미지: ${imageUrlMap.size}개`;
                     }
 
-                    md = storageToMd.convert(page.body.storage.value, imageUrlMap);
+                    const jiraIssueMap = await tryBuildJiraIssueMap(page.body.storage.value);
+                    md = storageToMd.convert(page.body.storage.value, imageUrlMap, jiraIssueMap);
                     
                     if (useAiFallback) {
                         const aiResult = await aiService.refine({

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { StorageToMarkdownConverter } from '../storage-to-md.js';
+import { StorageToMarkdownConverter, JiraIssueInfo } from '../storage-to-md.js';
 
 describe('StorageToMarkdownConverter', () => {
     let converter: StorageToMarkdownConverter;
@@ -116,6 +116,25 @@ describe('StorageToMarkdownConverter', () => {
             const md = conv.convert(inlineXml);
             expect(md).toContain('[AIVOICEBOT-1195](https://jira.tde.sktelecom.com/browse/AIVOICEBOT-1195)');
             expect(md).toContain('배포 예정');
+        });
+
+        it('jiraIssueMap이 제공되면 티켓 제목과 상태를 함께 표시한다', () => {
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com' });
+            const issueMap = new Map<string, JiraIssueInfo>([
+                ['PROJ-1234', { summary: '주소 변경 처리 오류', status: '완료(Close)' }],
+            ]);
+            const md = conv.convert(jiraXml, undefined, issueMap);
+            expect(md).toContain('[PROJ-1234](https://jira.example.com/browse/PROJ-1234)');
+            expect(md).toContain('주소 변경 처리 오류');
+            expect(md).toContain('`완료(Close)`');
+        });
+
+        it('jiraIssueMap에 해당 키가 없으면 링크만 표시한다', () => {
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.example.com' });
+            const emptyMap = new Map<string, JiraIssueInfo>();
+            const md = conv.convert(jiraXml, undefined, emptyMap);
+            expect(md).toContain('[PROJ-1234](https://jira.example.com/browse/PROJ-1234)');
+            expect(md).not.toContain('`');
         });
     });
 });

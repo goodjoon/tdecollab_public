@@ -2,6 +2,11 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { JSDOM } from 'jsdom';
 
+export interface JiraIssueInfo {
+    summary: string;
+    status: string;
+}
+
 export interface StorageToMarkdownOptions {
     /** JIRA 티켓 링크 생성에 사용할 베이스 URL (예: https://jira.example.com). 미설정 시 JIRA_BASE_URL 환경변수 사용. */
     jiraBaseUrl?: string;
@@ -10,9 +15,11 @@ export interface StorageToMarkdownOptions {
 export class StorageToMarkdownConverter {
     private turndown: TurndownService;
     private jiraBaseUrl: string;
+    private jiraIssueMap: Map<string, JiraIssueInfo> | undefined;
 
     constructor(options: StorageToMarkdownOptions = {}) {
         this.jiraBaseUrl = options.jiraBaseUrl || process.env.JIRA_BASE_URL || '';
+        this.jiraIssueMap = undefined;
         this.turndown = new TurndownService({
             headingStyle: 'atx',
             hr: '---',
@@ -97,6 +104,10 @@ export class StorageToMarkdownConverter {
                     if (key) {
                         const base = this.jiraBaseUrl.replace(/\/$/, '');
                         const url = base ? `${base}/browse/${key}` : `https://jira.atlassian.com/browse/${key}`;
+                        const info = this.jiraIssueMap?.get(key);
+                        if (info) {
+                            return ` [${key}](${url}) ${info.summary} \`${info.status}\` `;
+                        }
                         return ` [${key}](${url}) `;
                     }
                     return '';
@@ -107,7 +118,8 @@ export class StorageToMarkdownConverter {
         });
     }
 
-    convert(storageHtml: string, imageUrlMap?: Map<string, string>): string {
+    convert(storageHtml: string, imageUrlMap?: Map<string, string>, jiraIssueMap?: Map<string, JiraIssueInfo>): string {
+        this.jiraIssueMap = jiraIssueMap;
         if (!storageHtml) return '';
 
         // 1. Confluence 전용 태그를 표준 HTML 태그로 치환 (JSDOM 호환성)
@@ -154,6 +166,7 @@ export class StorageToMarkdownConverter {
         // 4. 헤딩 내 숫자 뒤 점 이스케이프 제거 (예: `## 1\.` → `## 1.`)
         markdown = markdown.replace(/^(#{1,6}\s.*?)\\\./gm, '$1.');
 
+        this.jiraIssueMap = undefined;
         return markdown + '\n';
     }
 }
