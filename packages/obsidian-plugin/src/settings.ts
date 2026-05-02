@@ -27,6 +27,10 @@ export class TdecollabSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    containerEl.createEl('h2', { text: 'TDE Collab Confluence 설정' });
+    containerEl.createEl('p', { text: '현재 선택한 마크다운 노트를 Confluence 페이지로 업로드(생성/수정)하거나, Confluence 페이지를 다운로드하여 덮어쓸 수 있습니다.' });
+    containerEl.createEl('p', { text: '사용 전 Confluence API URL 및 인증 정보를 입력해주세요.' });
+
     new Setting(containerEl)
       .setName('Confluence Base URL')
       .setDesc('예: https://your-domain.atlassian.net')
