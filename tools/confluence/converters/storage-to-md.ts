@@ -146,12 +146,12 @@ export class StorageToMarkdownConverter {
             .replace(/<ac:rich-text-body>/gi, '<div data-macro-rich-body>')
             .replace(/<\/ac:rich-text-body>/gi, '</div>');
 
-        // Draw.io / Gliffy 다이어그램을 이미지 태그로 변환 (이미지 추출용)
+        // Draw.io / Gliffy 다이어그램 변환 (이미지 추출용)
         processedHtml = processedHtml
-            .replace(/<ac:structured-macro[^>]*ac:name\s*=\s*["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name\s*=\s*["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
+            .replace(/<ac:structured-macro[^>]*ac:name=["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
                 return `<img src="${filename}" alt="${filename}" />`;
             })
-            .replace(/<ac:structured-macro[^>]*ac:name\s*=\s*["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name\s*=\s*["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
+            .replace(/<ac:structured-macro[^>]*ac:name=["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
                 return `<img src="${name}.png" alt="${name}" />`;
             });
 

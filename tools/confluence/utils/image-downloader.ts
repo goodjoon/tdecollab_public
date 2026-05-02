@@ -28,7 +28,9 @@ export class ImageDownloader {
         const references: ImageReference[] = [];
 
         // 1. ac:image 태그에서 attachment 추출
-        const attachmentRegex = /<ac:image[^>]*>[\s\S]*?<ri:attachment\s+ri:filename\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi;
+        // <ac:image><ri:attachment ri:filename="image.png" /></ac:image>
+        const attachmentRegex =
+            /<ac:image[^>]*>[\s\S]*?<ri:attachment\s+ri:filename="([^"]+)"[\s\S]*?<\/ac:image>/g;
         let match;
         while ((match = attachmentRegex.exec(html)) !== null) {
             references.push({
@@ -38,28 +40,10 @@ export class ImageDownloader {
             });
         }
 
-        // 2. ac:structured-macro (Draw.io 등)에서 attachment 추출
-        const drawioRegex = /<ac:structured-macro[^>]*ac:name=["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi;
-        while ((match = drawioRegex.exec(html)) !== null) {
-            references.push({
-                type: 'attachment',
-                filename: match[1],
-                originalTag: match[0],
-            });
-        }
-
-        // 3. Gliffy 다이어그램 추출
-        const gliffyRegex = /<ac:structured-macro[^>]*ac:name=["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi;
-        while ((match = gliffyRegex.exec(html)) !== null) {
-            references.push({
-                type: 'attachment',
-                filename: `${match[1]}.png`,
-                originalTag: match[0],
-            });
-        }
-
-        // 4. ac:image 태그에서 URL 추출
-        const urlInAcImageRegex = /<ac:image[^>]*>[\s\S]*?<ri:url\s+ri:value\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi;
+        // 2. ac:image 태그에서 URL 추출
+        // <ac:image><ri:url ri:value="https://example.com/image.png" /></ac:image>
+        const urlInAcImageRegex =
+            /<ac:image[^>]*>[\s\S]*?<ri:url\s+ri:value="([^"]+)"[\s\S]*?<\/ac:image>/g;
         while ((match = urlInAcImageRegex.exec(html)) !== null) {
             references.push({
                 type: 'url',
@@ -68,17 +52,20 @@ export class ImageDownloader {
             });
         }
 
-        // 5. 일반 img 태그
+        // 3. 일반 img 태그
+        // <img src="https://example.com/image.png" alt="description" />
         const imgRegex = /<img\s+[^>]*\/?>/g;
         while ((match = imgRegex.exec(html)) !== null) {
             const imgTag = match[0];
-            const srcMatch = /src=["']([^"']+)["']/.exec(imgTag) || /src=([^ >]+)/.exec(imgTag);
-            const altMatch = /alt=["']([^"']*)["']/.exec(imgTag);
+            // src 추출
+            const srcMatch = /src="([^"]+)"/.exec(imgTag);
+            // alt 추출
+            const altMatch = /alt="([^"]*)"/.exec(imgTag);
 
             if (srcMatch) {
                 references.push({
                     type: 'url',
-                    url: srcMatch[1].replace(/["']/g, ''),
+                    url: srcMatch[1],
                     originalTag: imgTag,
                     altText: altMatch ? altMatch[1] : '',
                 });

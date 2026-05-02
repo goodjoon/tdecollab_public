@@ -3,7 +3,6 @@ import * as path from 'path';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
-import { StorageToMarkdownConverter } from '../../../tools/confluence/converters/storage-to-md.js';
 import { UploadModal } from './ui/UploadModal.js';
 import { DownloadModal } from './ui/DownloadModal.js';
 import { ImageDownloader } from '../../../tools/confluence/utils/image-downloader.js';
@@ -74,21 +73,20 @@ export default class TdecollabPlugin extends Plugin {
             console.log(`[TDE Collab] Downloading page: ${pageId}, saveMode: ${saveMode}`);
             new Notice('Downloading from Confluence...');
             
-            // 1. Confluence 클라이언트 초기화
             const axiosClient = createConfluenceClient({
               baseUrl: this.settings.baseUrl,
               auth: { username: this.settings.email || undefined, token: this.settings.apiToken }
             });
             const contentApi = new ConfluenceContentApi(axiosClient);
 
-            // 2. 페이지 데이터 가져오기 (Storage XML 포함)
+            // 1. 페이지 데이터 가져오기
             const pageData = await contentApi.getPage(pageId);
             const storageXml = pageData.body.storage.value;
             console.log(`[TDE Collab] Page data fetched: ${pageData.title}`);
 
             let imageUrlMap: Map<string, string> | undefined;
             
-            // 3. 이미지 다운로드 처리
+            // 2. 이미지 다운로드 처리
             if (this.settings.downloadImages) {
               // 저장될 기본 폴더 경로 결정
               let baseFolderPath = '';
@@ -130,7 +128,6 @@ export default class TdecollabPlugin extends Plugin {
               const rawImageUrlMap = await downloader.downloadAllImages(storageXml);
               console.log(`[TDE Collab] Downloaded ${rawImageUrlMap.size} images.`);
               
-              // 마크다운 내에서는 Vault 루트 기준의 상대 경로를 사용
               imageUrlMap = new Map();
               for (const [key, absPath] of rawImageUrlMap.entries()) {
                 const relPath = path.relative(vaultPath, absPath);
@@ -138,7 +135,7 @@ export default class TdecollabPlugin extends Plugin {
               }
             }
 
-            // 4. 마크다운 변환 (저장된 이미지 맵 적용)
+            // 3. 마크다운 변환
             const converter = new StorageToMarkdownConverter({ baseUrl: this.settings.baseUrl });
             const finalMarkdown = converter.convert(storageXml, imageUrlMap);
             
