@@ -4,8 +4,11 @@ import { logger } from './logger.js';
 import { ServiceConfig } from './types.js';
 
 export function createHttpClient(config: ServiceConfig): AxiosInstance {
+    // URL 정규화 (후행 슬래시 제거)
+    const normalizedBaseUrl = config.baseUrl.replace(/\/+$/, '');
+
     const client = axios.create({
-        baseURL: config.baseUrl,
+        baseURL: normalizedBaseUrl,
         timeout: 30000, // 30초 타임아웃
         headers: {
             'Content-Type': 'application/json',
