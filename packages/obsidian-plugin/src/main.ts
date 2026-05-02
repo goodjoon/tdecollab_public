@@ -3,6 +3,7 @@ import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './setting
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
 import { UploadModal } from './ui/UploadModal.js';
+import { DownloadModal } from './ui/DownloadModal.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -46,43 +47,64 @@ export default class TdecollabPlugin extends Plugin {
 
     this.addCommand({
       id: 'download-from-confluence',
-      name: 'Download from Confluence (Overwrite)',
+      name: 'Download from Confluence',
       callback: async () => {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (!view || !view.file) {
-          new Notice('마크다운 파일이 열려있지 않습니다.');
-          return;
-        }
+        const file = view?.file;
+        let defaultPageId = '';
         
-        const file = view.file;
-        const content = await this.app.vault.read(file);
-        const fm = extractFrontmatter(content);
-        const pageId = fm?.confluence_page_id;
-
-        if (!pageId) {
-          new Notice('Frontmatter에 confluence_page_id가 없습니다.');
-          return;
+        if (file) {
+          const content = await this.app.vault.read(file);
+          const fm = extractFrontmatter(content);
+          defaultPageId = fm?.confluence_page_id || '';
         }
 
-        try {
-          new Notice('Downloading from Confluence...');
-          const { markdown } = await downloadPage(
-            this.settings.baseUrl,
-            this.settings.email,
-            this.settings.apiToken,
-            pageId
-          );
-          
-          // Preserve existing frontmatter
-          const match = content.match(/^---\n([\s\S]*?)\n---/);
-          const fmString = match ? match[0] : `---\nconfluence_page_id: ${pageId}\n---`;
-          
-          await this.app.vault.modify(file, `${fmString}\n\n${markdown}`);
-          new Notice('다운로드 완료!');
-        } catch (e: any) {
-          console.error(e);
-          new Notice(`다운로드 실패: ${e.message}`);
-        }
+        new DownloadModal(this.app, defaultPageId, !!file, async (pageId, saveMode) => {
+          if (!pageId) {
+            new Notice('Page ID가 입력되지 않았습니다.');
+            return;
+          }
+
+          try {
+            new Notice('Downloading from Confluence...');
+            const { title, markdown } = await downloadPage(
+              this.settings.baseUrl,
+              this.settings.email,
+              this.settings.apiToken,
+              pageId
+            );
+            
+            const fmString = `---\nconfluence_page_id: ${pageId}\n---`;
+            const finalContent = `${fmString}\n\n${markdown}`;
+
+            if (saveMode === 'overwrite' && file) {
+              await this.app.vault.modify(file, finalContent);
+              new Notice('다운로드하여 현재 문서를 덮어썼습니다!');
+            } else {
+              // 새 파일 생성 (중복 이름 회피 로직 포함)
+              let newFileName = `${title}.md`;
+              // 유효하지 않은 파일 이름 문자 치환 (macOS/Windows 호환)
+              newFileName = newFileName.replace(/[\\/:*?"<>|]/g, '-');
+              
+              let newFilePath = newFileName;
+              let counter = 1;
+              while (this.app.vault.getAbstractFileByPath(newFilePath)) {
+                newFilePath = `${newFileName.replace('.md', '')} (${counter}).md`;
+                counter++;
+              }
+              
+              const newFile = await this.app.vault.create(newFilePath, finalContent);
+              new Notice(`'${newFilePath}' 파일로 다운로드 완료!`);
+              
+              // 새 파일을 현재 창에 열어줌
+              const leaf = this.app.workspace.getLeaf(true);
+              await leaf.openFile(newFile);
+            }
+          } catch (e: any) {
+            console.error(e);
+            new Notice(`다운로드 실패: ${e.message}`);
+          }
+        }).open();
       }
     });
   }
