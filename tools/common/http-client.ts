@@ -10,6 +10,7 @@ export function createHttpClient(config: ServiceConfig): AxiosInstance {
     const client = axios.create({
         baseURL: normalizedBaseUrl,
         timeout: 30000, // 30초 타임아웃
+        adapter: 'http', // Electron 환경(Obsidian)에서 XHR 대신 Node.js http 모듈을 사용하여 CORS 우회
         headers: {
             'Content-Type': 'application/json',
         },
