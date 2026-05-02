@@ -137,9 +137,9 @@ export class StorageToMarkdownConverter {
             .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, (match, p1) => {
                 return `__CDATA_START__${p1}__CDATA_END__`;
             })
-            .replace(/<ac:structured-macro\s+ac:name="([^"]*)"/gi, '<div data-macro-name-tag data-macro-name="$1"')
+            .replace(/<ac:structured-macro\s+ac:name\s*=\s*["']([^"']*)["']/gi, '<div data-macro-name-tag data-macro-name="$1"')
             .replace(/<\/ac:structured-macro>/gi, '</div>')
-            .replace(/<ac:parameter\s+ac:name="([^"]*)"/gi, '<div data-macro-param-tag data-macro-param-name="$1"')
+            .replace(/<ac:parameter\s+ac:name\s*=\s*["']([^"']*)["']/gi, '<div data-macro-param-tag data-macro-param-name="$1"')
             .replace(/<\/ac:parameter>/gi, '</div>')
             .replace(/<ac:plain-text-body>/gi, '<pre data-macro-body>')
             .replace(/<\/ac:plain-text-body>/gi, '</pre>')
@@ -148,21 +148,21 @@ export class StorageToMarkdownConverter {
 
         // Draw.io / Gliffy 다이어그램을 이미지 태그로 변환 (이미지 추출용)
         processedHtml = processedHtml
-            .replace(/<ac:structured-macro[^>]*ac:name=["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
+            .replace(/<ac:structured-macro[^>]*ac:name\s*=\s*["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name\s*=\s*["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
                 return `<img src="${filename}" alt="${filename}" />`;
             })
-            .replace(/<ac:structured-macro[^>]*ac:name=["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
+            .replace(/<ac:structured-macro[^>]*ac:name\s*=\s*["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name\s*=\s*["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
                 return `<img src="${name}.png" alt="${name}" />`;
             });
 
         // 일반 이미지 태그 변환
-        processedHtml = processedHtml.replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
-            const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+        processedHtml = processedHtml.replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
+            const altMatch = attrs.match(/ac:alt=["']([^"']+)["']/i);
             const alt = altMatch ? altMatch[1] : filename;
             return `<img src="${filename}" alt="${alt}" />`;
         })
-            .replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
-                const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+            .replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
+                const altMatch = attrs.match(/ac:alt=["']([^"']+)["']/i);
                 const alt = altMatch ? altMatch[1] : '';
                 return `<img src="${url}" alt="${alt}" />`;
             });

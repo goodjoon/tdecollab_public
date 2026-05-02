@@ -155,7 +155,10 @@ export class ConfluenceContentApi {
     }
 
     async downloadAttachment(downloadUrl: string): Promise<Buffer> {
-        const response = await this.client.get(downloadUrl, {
+        // Strip leading slash to respect baseURL path (like /wiki)
+        const targetUrl = downloadUrl.startsWith('/') ? downloadUrl.substring(1) : downloadUrl;
+        
+        const response = await this.client.get(targetUrl, {
             responseType: 'arraybuffer'
         });
         const data = response.data;
