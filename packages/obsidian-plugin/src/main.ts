@@ -1,13 +1,16 @@
 import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
-import * as path from 'path';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
 import { UploadModal } from './ui/UploadModal.js';
 import { DownloadModal } from './ui/DownloadModal.js';
-import { ImageDownloader } from '../../../tools/confluence/utils/image-downloader.js';
 import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
 import { createConfluenceClient } from '../../../tools/confluence/api/client.js';
+import {
+  ObsidianImageDownloader,
+  resolveDocumentFolderPath,
+  resolveImageFolderPath,
+} from './utils/image-download.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -73,6 +76,11 @@ export default class TdecollabPlugin extends Plugin {
             new Notice('Downloading from Confluence...');
             
             let imageUrlMap: Map<string, string> | undefined;
+            const documentFolderPath = resolveDocumentFolderPath({
+              saveMode,
+              currentFile: file,
+              defaultDownloadPath: this.settings.defaultDownloadPath,
+            });
             
             // 1. 이미지 다운로드 처리
             if (this.settings.downloadImages) {
@@ -90,28 +98,22 @@ export default class TdecollabPlugin extends Plugin {
                 pageId
               );
 
-              const imgDir = this.settings.imageDir || 'assets';
-              if (!this.app.vault.getAbstractFileByPath(imgDir)) {
-                await this.app.vault.createFolder(imgDir);
-              }
+              const imageFolderPath = resolveImageFolderPath(
+                documentFolderPath,
+                this.settings.imageDir || 'assets',
+              );
+              await this.ensureVaultFolder(imageFolderPath);
 
-              const vaultPath = (this.app.vault.adapter as any).getBasePath();
-              const absoluteImgDir = path.join(vaultPath, imgDir);
-
-              const downloader = new ImageDownloader(contentApi, {
-                outputDir: absoluteImgDir,
+              const downloader = new ObsidianImageDownloader(contentApi, {
+                adapter: this.app.vault.adapter,
+                imageDir: imageFolderPath,
+                markdownBaseDir: documentFolderPath,
                 pageId: pageId,
-                baseUrl: this.settings.baseUrl
+                baseUrl: this.settings.baseUrl,
               });
 
               new Notice('이미지 다운로드 중...');
-              const rawImageUrlMap = await downloader.downloadAllImages(initialData.storageXml);
-              
-              imageUrlMap = new Map();
-              for (const [key, absPath] of rawImageUrlMap.entries()) {
-                const relPath = path.relative(vaultPath, absPath);
-                imageUrlMap.set(key, relPath);
-              }
+              imageUrlMap = await downloader.downloadAllImages(initialData.storageXml);
             }
 
             // 2. 최종 마크다운 변환
@@ -131,12 +133,8 @@ export default class TdecollabPlugin extends Plugin {
               new Notice('다운로드하여 현재 문서를 덮어썼습니다!');
             } else {
               // 새 파일 생성 경로 결정
-              let folderPath = this.settings.defaultDownloadPath.trim();
-              if (folderPath.endsWith('/')) folderPath = folderPath.slice(0, -1);
-              
-              if (folderPath && !this.app.vault.getAbstractFileByPath(folderPath)) {
-                await this.app.vault.createFolder(folderPath);
-              }
+              const folderPath = documentFolderPath;
+              await this.ensureVaultFolder(folderPath);
 
               let newFileName = `${title}.md`;
               newFileName = newFileName.replace(/[\\/:*?"<>|]/g, '-');
@@ -163,6 +161,22 @@ export default class TdecollabPlugin extends Plugin {
         }).open();
       }
     });
+  }
+
+  async ensureVaultFolder(folderPath: string) {
+    if (!folderPath || this.app.vault.getAbstractFileByPath(folderPath)) {
+      return;
+    }
+
+    const parts = folderPath.split('/').filter(Boolean);
+    let current = '';
+
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!this.app.vault.getAbstractFileByPath(current)) {
+        await this.app.vault.createFolder(current);
+      }
+    }
   }
 
   async executeUpload(file: TFile, content: string, spaceKey: string, pageId?: string, parentId?: string) {
