@@ -5,7 +5,7 @@ export class JiraProjectApi {
     constructor(private client: AxiosInstance) {}
 
     async getProjects(): Promise<JiraProject[]> {
-        const response = await this.client.get('/rest/api/2/project');
+        const response = await this.client.get('rest/api/2/project');
         return response.data;
     }
 
@@ -21,7 +21,7 @@ export class JiraProjectApi {
         const params: Record<string, string> = {};
         if (projectKeyOrId) params.projectKeyOrId = projectKeyOrId;
         if (type) params.type = type;
-        const response = await this.client.get('/rest/agile/1.0/board', { params });
+        const response = await this.client.get('rest/agile/1.0/board', { params });
         return response.data;
     }
 

@@ -7,7 +7,7 @@ export class ConfluenceContentApi {
 
     async getPage(id: string, expand?: string[]): Promise<ConfluencePageResponse> {
         const expandParam = expand ? expand.join(',') : 'body.storage,version,space,metadata.labels';
-        const response = await this.client.get(`/rest/api/content/${id}`, {
+        const response = await this.client.get(`rest/api/content/${id}`, {
             params: { expand: expandParam }
         });
         return response.data;
@@ -15,7 +15,7 @@ export class ConfluenceContentApi {
 
     async getPageByTitle(spaceKey: string, title: string, expand?: string[]): Promise<ConfluencePageResponse | null> {
         const expandParam = expand ? expand.join(',') : 'body.storage,version,space';
-        const response = await this.client.get('/rest/api/content', {
+        const response = await this.client.get('rest/api/content', {
             params: {
                 spaceKey,
                 title,
@@ -47,7 +47,7 @@ export class ConfluenceContentApi {
             data.ancestors = [{ id: params.parentId }];
         }
 
-        const response = await this.client.post('/rest/api/content', data);
+        const response = await this.client.post('rest/api/content', data);
 
         // add labels if provided
         if (params.labels && params.labels.length > 0) {
@@ -73,16 +73,16 @@ export class ConfluenceContentApi {
             }
         };
 
-        const response = await this.client.put(`/rest/api/content/${params.id}`, data);
+        const response = await this.client.put(`rest/api/content/${params.id}`, data);
         return response.data;
     }
 
     async deletePage(id: string): Promise<void> {
-        await this.client.delete(`/rest/api/content/${id}`);
+        await this.client.delete(`rest/api/content/${id}`);
     }
 
     async getChildPages(id: string, start = 0, limit = 25): Promise<ConfluencePageResponse[]> {
-        const response = await this.client.get(`/rest/api/content/${id}/child/page`, {
+        const response = await this.client.get(`rest/api/content/${id}/child/page`, {
             params: { start, limit }
         });
         return response.data.results;
@@ -97,7 +97,7 @@ export class ConfluenceContentApi {
     // For now, simple implementation to support createPage.
     private async addLabels(id: string, labels: string[]): Promise<void> {
         const data = labels.map(name => ({ prefix: 'global', name }));
-        await this.client.post(`/rest/api/content/${id}/label`, data);
+        await this.client.post(`rest/api/content/${id}/label`, data);
     }
 
     // Attachment 관련 메서드 (upsert: 기존 파일이 있으면 업데이트, 없으면 신규 업로드)
@@ -124,14 +124,14 @@ export class ConfluenceContentApi {
         if (existing) {
             // 기존 파일 업데이트 (POST to /data endpoint)
             response = await this.client.post(
-                `/rest/api/content/${pageId}/child/attachment/${existing.id}/data`,
+                `rest/api/content/${pageId}/child/attachment/${existing.id}/data`,
                 form,
                 { headers }
             );
         } else {
             // 신규 업로드
             response = await this.client.post(
-                `/rest/api/content/${pageId}/child/attachment`,
+                `rest/api/content/${pageId}/child/attachment`,
                 form,
                 { headers }
             );
@@ -145,7 +145,7 @@ export class ConfluenceContentApi {
     }
 
     async getAttachments(pageId: string, filename?: string): Promise<ConfluenceAttachmentResponse[]> {
-        const response = await this.client.get(`/rest/api/content/${pageId}/child/attachment`, {
+        const response = await this.client.get(`rest/api/content/${pageId}/child/attachment`, {
             params: {
                 filename,
                 expand: 'version'

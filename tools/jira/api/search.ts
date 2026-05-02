@@ -18,7 +18,7 @@ export class JiraSearchApi {
         if (fields && fields.length > 0) {
             params.fields = fields.join(',');
         }
-        const response = await this.client.get('/rest/api/2/search', { params });
+        const response = await this.client.get('rest/api/2/search', { params });
         return response.data;
     }
 }

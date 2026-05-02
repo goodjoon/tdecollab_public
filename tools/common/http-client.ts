@@ -4,8 +4,8 @@ import { logger } from './logger.js';
 import { ServiceConfig } from './types.js';
 
 export function createHttpClient(config: ServiceConfig): AxiosInstance {
-    // URL 정규화 (후행 슬래시 제거)
-    const normalizedBaseUrl = config.baseUrl.replace(/\/+$/, '');
+    // URL 정규화 (항상 슬래시로 끝나도록 하여 하위 경로가 유지되게 함)
+    const normalizedBaseUrl = config.baseUrl.endsWith('/') ? config.baseUrl : `${config.baseUrl}/`;
 
     const client = axios.create({
         baseURL: normalizedBaseUrl,

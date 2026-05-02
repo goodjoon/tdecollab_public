@@ -10,7 +10,7 @@ export class GitlabProjectApi {
         membership?: boolean;
         perPage?: number;
     }): Promise<GitlabProject[]> {
-        const response = await this.client.get('/projects', {
+        const response = await this.client.get('projects', {
             params: {
                 search: params?.search,
                 owned: params?.owned,
