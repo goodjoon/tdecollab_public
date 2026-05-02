@@ -27,7 +27,7 @@ JIRA 이슈의 상세 정보를 조회한다.
   "labels": ["backend", "api"],
   "created": "2024-01-15",
   "updated": "2024-01-16",
-  "url": "https://jira.tde.sktelecom.com/browse/PROJ-123"
+  "url": "https://jira.tde.example.com/browse/PROJ-123"
 }
 ```
 
@@ -52,7 +52,7 @@ JIRA에 새 이슈를 생성한다.
 {
   "key": "PROJ-124",
   "id": "10002",
-  "url": "https://jira.tde.sktelecom.com/browse/PROJ-124"
+  "url": "https://jira.tde.example.com/browse/PROJ-124"
 }
 ```
 
@@ -176,7 +176,7 @@ JQL 쿼리로 JIRA 이슈를 검색한다.
       "name": "프로젝트명",
       "lead": "홍길동",
       "issueTypes": ["Task", "Bug", "Story"],
-      "url": "https://jira.tde.sktelecom.com/browse/PROJ"
+      "url": "https://jira.tde.example.com/browse/PROJ"
     }
   ],
   "boards": [

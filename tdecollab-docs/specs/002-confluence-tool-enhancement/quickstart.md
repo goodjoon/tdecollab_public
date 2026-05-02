@@ -5,8 +5,8 @@
 ### 1.1 환경 변수 (.env) 확인
 프로젝트 루트의 `.env` 파일에 다음 설정이 포함되어 있는지 확인하십시오.
 ```env
-CONFLUENCE_BASE_URL=https://confluence.tde.sktelecom.com
-CONFLUENCE_EMAIL=사번@sktelecom.com
+CONFLUENCE_BASE_URL=https://confluence.tde.example.com
+CONFLUENCE_EMAIL=user@example.com
 CONFLUENCE_API_TOKEN=your-token
 # AI 폴백을 위해 필요한 경우 (선택)
 OPENAI_API_KEY=sk-...
@@ -24,7 +24,7 @@ pnpm install
 
 ```bash
 pnpm cli confluence page create \
-  --space "~1111812" \
+  --space "~1234567" \
   --title "Confluence 고도화 테스트 - $(date +%Y%m%d)" \
   --parent "951466645" \
   --file "tdecollab-docs/specs/001-agentic-prd-harness/plan.md"

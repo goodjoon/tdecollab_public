@@ -16,8 +16,8 @@
 **Confluence:**
 | 변수명 | 필수 | 설명 | 예시 |
 |--------|------|------|------|
-| `CONFLUENCE_BASE_URL` | O | Confluence 서버 URL | `https://confluence.tde.sktelecom.com` |
-| `CONFLUENCE_EMAIL` | O | 사용자 이메일 | `사번@sktelecom.com` |
+| `CONFLUENCE_BASE_URL` | O | Confluence 서버 URL | `https://confluence.tde.example.com` |
+| `CONFLUENCE_EMAIL` | O | 사용자 이메일 | `user@example.com` |
 | `CONFLUENCE_API_TOKEN` | △ | API 토큰 (PASSWORD와 택1) | |
 | `CONFLUENCE_PASSWORD` | △ | 비밀번호 (API_TOKEN과 택1) | |
 | `CONFLUENCE_SPACE_KEY` | | 기본 스페이스 키 | `~사용자스페이스` |
@@ -26,15 +26,15 @@
 **JIRA:**
 | 변수명 | 필수 | 설명 | 예시 |
 |--------|------|------|------|
-| `JIRA_BASE_URL` | O | JIRA 서버 URL | `https://jira.tde.sktelecom.com` |
-| `JIRA_EMAIL` | O | 사용자 이메일 | `사번@sktelecom.com` |
+| `JIRA_BASE_URL` | O | JIRA 서버 URL | `https://jira.tde.example.com` |
+| `JIRA_EMAIL` | O | 사용자 이메일 | `user@example.com` |
 | `JIRA_API_TOKEN` | △ | API 토큰 (PASSWORD와 택1) | |
 | `JIRA_PASSWORD` | △ | 비밀번호 (API_TOKEN과 택1) | |
 
 **GitLab:**
 | 변수명 | 필수 | 설명 | 예시 |
 |--------|------|------|------|
-| `GITLAB_BASE_URL` | O | GitLab 서버 URL | `https://gitlab.tde.sktelecom.com` |
+| `GITLAB_BASE_URL` | O | GitLab 서버 URL | `https://gitlab.tde.example.com` |
 | `GITLAB_PRIVATE_TOKEN` | O | Personal Access Token | |
 
 ### 1.3 설정 파일 로드 우선순위
@@ -71,7 +71,7 @@ Authorization: Basic base64(email:password)
 3. 둘 다 없으면 에러 발생
 
 ### 2.3 Base URL
-- 서버 URL: `https://confluence.tde.sktelecom.com`
+- 서버 URL: `https://confluence.tde.example.com`
 - API 경로 접두사: `/rest/api`
 - 사용자가 전체 페이지 URL을 입력해도 base URL을 자동 추출하는 로직 필요 (aicc-pm의 `_sanitize_base_url` 참조)
 
@@ -94,7 +94,7 @@ Authorization: Basic base64(email:password)
 Confluence와 동일한 규칙 적용.
 
 ### 3.3 Base URL
-- 서버 URL: `https://jira.tde.sktelecom.com`
+- 서버 URL: `https://jira.tde.example.com`
 - REST API 접두사: `/rest/api/2`
 - Agile API 접두사: `/rest/agile/1.0`
 
@@ -114,7 +114,7 @@ GitLab 웹 UI → Settings → Access Tokens에서 생성. 필요한 스코프:
 - `read_repository`: 저장소 파일 조회
 
 ### 4.3 Base URL
-- 서버 URL: `https://gitlab.tde.sktelecom.com`
+- 서버 URL: `https://gitlab.tde.example.com`
 - API 접두사: `/api/v4`
 
 ## 5. 설정 관리 클래스 설계

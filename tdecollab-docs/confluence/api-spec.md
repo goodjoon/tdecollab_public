@@ -1,7 +1,7 @@
 # Confluence REST API 스펙
 
 ## 1. 기본 정보
-- Base URL: `https://confluence.tde.sktelecom.com`
+- Base URL: `https://confluence.tde.example.com`
 - API 경로 접두사: `/rest/api`
 - 인증: HTTP Basic Auth (Email:API-Token 또는 Email:Password)
 - 서버 유형: Confluence Server/Data Center (Cloud가 아님)
@@ -202,7 +202,7 @@
   "size": 10,
   "_links": {
     "next": "/rest/api/content?start=25&limit=25",
-    "base": "https://confluence.tde.sktelecom.com",
+    "base": "https://confluence.tde.example.com",
     "context": "/rest/api"
   }
 }

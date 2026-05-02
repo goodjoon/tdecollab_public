@@ -12,9 +12,9 @@
 -   [아키텍처 설계서 V2](../1.%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90%EC%84%A4%EA%B3%84/lvmf.arch.design.v2.md)
 -   [Backend V2 패키지 구조 설계서](../1.%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90%EC%84%A4%EA%B3%84/lvmf.backend_v2.package-structure.md)
 -   [내부 인터페이스 정의서 V2](./lvmf.%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_%EC%A0%95%EC%9D%98%EC%84%9C.internal.v2.md)
--   [STT 인터페이스](interface.stt.sktelecom.md)
--   [TTS 인터페이스](interface.tts.sktelecom.md)
--   [LVTF 인터페이스](interface.lvtf.sktelecom.md)
+-   [STT 인터페이스](interface.stt.example.md)
+-   [TTS 인터페이스](interface.tts.example.md)
+-   [LVTF 인터페이스](interface.lvtf.example.md)
 
 ## 1. Client Interface (Channel <-> XGW)
 
@@ -561,9 +561,9 @@ worker 응답의 client relay 기준은 아래처럼 고정한다.
 
 | 내부 구간 | 외부 연동 대상 | 외부 프로토콜 | 비고 |
 | --- | --- | --- | --- |
-| `XGW <-> STTW` | `STT Worker <-> STT Engine` | WebSocket | `interface.stt.sktelecom.md` 기준 |
-| `XGW <-> TTSW` | `TTS Worker <-> TTS Engine` | WebSocket | `interface.tts.sktelecom.md` 기준 |
-| `XGW <-> TFW` | `TF Worker <-> TF Engine` | gRPC | `interface.lvtf.sktelecom.md` 기준 |
+| `XGW <-> STTW` | `STT Worker <-> STT Engine` | WebSocket | `interface.stt.example.md` 기준 |
+| `XGW <-> TTSW` | `TTS Worker <-> TTS Engine` | WebSocket | `interface.tts.example.md` 기준 |
+| `XGW <-> TFW` | `TF Worker <-> TF Engine` | gRPC | `interface.lvtf.example.md` 기준 |
 
 ### 2.9 운영 고려사항
 

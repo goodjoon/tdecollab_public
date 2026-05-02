@@ -22,7 +22,7 @@ Confluence 관련 MCP 도구 9개를 정의한다. 모든 도구는 `confluence_
   "spaceKey": "SPACE",
   "content": "# 페이지 제목\n\n본문 내용...",
   "version": 5,
-  "url": "https://confluence.tde.sktelecom.com/pages/viewpage.action?pageId=12345",
+  "url": "https://confluence.tde.example.com/pages/viewpage.action?pageId=12345",
   "lastModified": "2024-01-15T10:30:00Z",
   "lastModifiedBy": "사용자명"
 }
@@ -46,7 +46,7 @@ Markdown 콘텐츠를 Confluence 페이지로 생성한다.
 {
   "id": "12346",
   "title": "새 페이지",
-  "url": "https://confluence.tde.sktelecom.com/pages/viewpage.action?pageId=12346",
+  "url": "https://confluence.tde.example.com/pages/viewpage.action?pageId=12346",
   "spaceKey": "SPACE",
   "version": 1
 }

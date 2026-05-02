@@ -7,7 +7,7 @@ import path from 'fs';
 
 async function main() {
     const parentId = '951466645';
-    const spaceKey = '~1111812';
+    const spaceKey = '~1234567';
     const filePath = 'tdecollab-docs/specs/001-agentic-prd-harness/plan.md';
 
     console.log(`[Test] Confluence 업로드 테스트 시작...`);

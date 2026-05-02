@@ -152,13 +152,13 @@ return {
       "command": "node",
       "args": ["/path/to/tdecollab/dist/index.js"],
       "env": {
-        "CONFLUENCE_BASE_URL": "https://confluence.tde.sktelecom.com",
-        "CONFLUENCE_EMAIL": "사번@sktelecom.com",
+        "CONFLUENCE_BASE_URL": "https://confluence.tde.example.com",
+        "CONFLUENCE_EMAIL": "user@example.com",
         "CONFLUENCE_API_TOKEN": "your-token",
-        "JIRA_BASE_URL": "https://jira.tde.sktelecom.com",
-        "JIRA_EMAIL": "사번@sktelecom.com",
+        "JIRA_BASE_URL": "https://jira.tde.example.com",
+        "JIRA_EMAIL": "user@example.com",
         "JIRA_API_TOKEN": "your-token",
-        "GITLAB_BASE_URL": "https://gitlab.tde.sktelecom.com",
+        "GITLAB_BASE_URL": "https://gitlab.tde.example.com",
         "GITLAB_PRIVATE_TOKEN": "your-token"
       }
     }

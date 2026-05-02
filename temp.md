@@ -3,7 +3,7 @@
 **페이지 정보:**
 - ID: 431798741
 - Space: AICC 플랫폼 (AICCDEV)
-- URL: https://confluence.tde.sktelecom.com/spaces/AICCDEV/pages/431798741/TACP+C.+%EC%83%81%EC%9A%A9
+- URL: https://confluence.tde.example.com/spaces/AICCDEV/pages/431798741/TACP+C.+%EC%83%81%EC%9A%A9
 
 ---
 

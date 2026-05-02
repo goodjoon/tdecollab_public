@@ -64,8 +64,8 @@ graph TD
 ## 4. 테스트 환경 구축
 
 ### 4.1 부모 페이지 정보
-- URL: `https://confluence.tde.sktelecom.com/spaces/~1111812/pages/951466645/`
-- Space Key: `~1111812`
+- URL: `https://confluence.tde.example.com/spaces/~1234567/pages/951466645/`
+- Space Key: `~1234567`
 - Parent Page ID: `951466645`
 
 ### 4.2 테스트 시나리오

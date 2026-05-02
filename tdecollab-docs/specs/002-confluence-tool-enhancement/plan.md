@@ -1,7 +1,7 @@
 # Implementation Plan: Confluence Tool Enhancement (Advanced MD Conversion)
 
 **Branch**: `002-confluence-tool-enhancement` | **Date**: 2024-05-24 | **Spec**: [Link to Spec](./spec.md)
-**Input**: .env 파일에 이미 api key 들이 설정되어있으니 이 설정을 기반으로 cli 와 mcp 모두를 테스트 해보도록 하자. confluence 의 나의 workspace 의 특정 페이지에 (https://confluence.tde.sktelecom.com/spaces/~1111812/pages/951466645/...) 서브페이지를 만들고, tdecollab-docs/ 내의 문서들 중 표와 mermaid 다이어그램들이 있는 페이지를 업로드 하여 테스트해보도록 하자.
+**Input**: .env 파일에 이미 api key 들이 설정되어있으니 이 설정을 기반으로 cli 와 mcp 모두를 테스트 해보도록 하자. confluence 의 나의 workspace 의 특정 페이지에 (https://confluence.tde.example.com/spaces/~1234567/pages/951466645/...) 서브페이지를 만들고, tdecollab-docs/ 내의 문서들 중 표와 mermaid 다이어그램들이 있는 페이지를 업로드 하여 테스트해보도록 하자.
 
 ## Summary
 

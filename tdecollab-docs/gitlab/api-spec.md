@@ -1,7 +1,7 @@
 # GitLab REST API 스펙
 
 ## 1. 기본 정보
-- Base URL: `https://gitlab.tde.sktelecom.com` (확인 필요)
+- Base URL: `https://gitlab.tde.example.com` (확인 필요)
 - API 경로 접두사: `/api/v4`
 - 인증: `PRIVATE-TOKEN` 헤더
 - 서버 유형: GitLab Self-hosted
@@ -37,9 +37,9 @@
   "path_with_namespace": "namespace/project",
   "default_branch": "main",
   "visibility": "private",
-  "web_url": "https://gitlab.tde.sktelecom.com/namespace/project",
-  "ssh_url_to_repo": "git@gitlab.tde.sktelecom.com:namespace/project.git",
-  "http_url_to_repo": "https://gitlab.tde.sktelecom.com/namespace/project.git",
+  "web_url": "https://gitlab.tde.example.com/namespace/project",
+  "ssh_url_to_repo": "git@gitlab.tde.example.com:namespace/project.git",
+  "http_url_to_repo": "https://gitlab.tde.example.com/namespace/project.git",
   "created_at": "2024-01-01T00:00:00Z",
   "last_activity_at": "2024-01-16T15:30:00Z"
 }

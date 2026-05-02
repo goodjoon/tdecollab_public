@@ -25,7 +25,7 @@ GitLab 프로젝트를 조회한다 (목록 또는 상세).
       "nameWithNamespace": "네임스페이스 / 프로젝트명",
       "defaultBranch": "main",
       "visibility": "private",
-      "webUrl": "https://gitlab.tde.sktelecom.com/namespace/project",
+      "webUrl": "https://gitlab.tde.example.com/namespace/project",
       "lastActivityAt": "2024-01-16"
     }
   ]
@@ -83,7 +83,7 @@ MR 목록 또는 상세를 조회한다.
 {
   "iid": 43,
   "title": "MR 제목",
-  "webUrl": "https://gitlab.tde.sktelecom.com/namespace/project/-/merge_requests/43",
+  "webUrl": "https://gitlab.tde.example.com/namespace/project/-/merge_requests/43",
   "sourceBranch": "feature/my-branch",
   "targetBranch": "main"
 }

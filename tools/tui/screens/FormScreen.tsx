@@ -281,7 +281,7 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
                       <Text color={T.fg}>{urlValue}</Text>
                     ) : (
                       <Text color={T.fgFaint}>
-                        https://confluence.tde.sktelecom.com/spaces/TDE/pages/123456/...
+                        https://confluence.tde.example.com/spaces/TDE/pages/123456/...
                       </Text>
                     )}
                     {onUrlField && <Text backgroundColor={URL_FILL_COLOR} color={T.bg}> </Text>}

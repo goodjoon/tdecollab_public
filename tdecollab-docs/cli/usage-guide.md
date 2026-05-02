@@ -1,6 +1,10 @@
+---
+confluence_page_id: 1028470454
+---
+
 # tdecollab CLI 사용 가이드
 
-`tdecollab`은 터미널 환경에서 TDE 포털의 주요 서비스(Confluence, JIRA, GitLab)를 손쉽게 사용할 수 있도록 다양한 명령어를 제공합니다.
+`tdecollab`은 터미널 환경에서 TDE 포털의 주요 서비스(Confluence, JIRA, GitLab)를 손쉽게 사용할 수 있도록 다양한 명령어를 제공합니다!.
 
 ---
 

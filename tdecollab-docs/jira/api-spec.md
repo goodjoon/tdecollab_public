@@ -1,7 +1,7 @@
 # JIRA REST API 스펙
 
 ## 1. 기본 정보
-- Base URL: `https://jira.tde.sktelecom.com` (확인 필요)
+- Base URL: `https://jira.tde.example.com` (확인 필요)
 - REST API 접두사: `/rest/api/2`
 - Agile API 접두사: `/rest/agile/1.0`
 - 인증: HTTP Basic Auth (Email:API-Token 또는 Email:Password)
@@ -23,11 +23,11 @@
 {
   "id": "10001",
   "key": "PROJ-123",
-  "self": "https://jira.tde.sktelecom.com/rest/api/2/issue/10001",
+  "self": "https://jira.tde.example.com/rest/api/2/issue/10001",
   "fields": {
     "summary": "이슈 요약",
     "status": { "name": "진행 중", "id": "3" },
-    "assignee": { "displayName": "홍길동", "emailAddress": "hong@sktelecom.com" },
+    "assignee": { "displayName": "홍길동", "emailAddress": "hong@example.com" },
     "reporter": { "displayName": "김철수" },
     "priority": { "name": "High", "id": "2" },
     "issuetype": { "name": "Task", "id": "10001" },

@@ -153,9 +153,9 @@ describe('StorageToMarkdownConverter', () => {
                     <li>(완료) <ac:structured-macro ac:name="jira" ac:schema-version="1"><ac:parameter ac:name="key">AIVOICEBOT-1195</ac:parameter></ac:structured-macro> → 배포 예정</li>
                 </ul>
             `;
-            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.tde.sktelecom.com' });
+            const conv = new StorageToMarkdownConverter({ jiraBaseUrl: 'https://jira.tde.example.com' });
             const md = conv.convert(inlineXml);
-            expect(md).toContain('[AIVOICEBOT-1195](https://jira.tde.sktelecom.com/browse/AIVOICEBOT-1195)');
+            expect(md).toContain('[AIVOICEBOT-1195](https://jira.tde.example.com/browse/AIVOICEBOT-1195)');
             expect(md).toContain('배포 예정');
         });
 
