@@ -12,5 +12,6 @@ files/
 .tdecollab.json
 .tdecollab_history.json
 .obsidian/
+.trash/
 90.Repository/
 .claude/
