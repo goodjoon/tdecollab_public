@@ -70,49 +70,29 @@ export default class TdecollabPlugin extends Plugin {
           }
 
           try {
-            console.log(`[TDE Collab] Downloading page: ${pageId}, saveMode: ${saveMode}`);
             new Notice('Downloading from Confluence...');
             
-            const axiosClient = createConfluenceClient({
-              baseUrl: this.settings.baseUrl,
-              auth: { username: this.settings.email || undefined, token: this.settings.apiToken }
-            });
-            const contentApi = new ConfluenceContentApi(axiosClient);
-
-            // 1. 페이지 데이터 가져오기
-            const pageData = await contentApi.getPage(pageId);
-            const storageXml = pageData.body.storage.value;
-            console.log(`[TDE Collab] Page data fetched: ${pageData.title}`);
-
             let imageUrlMap: Map<string, string> | undefined;
             
-            // 2. 이미지 다운로드 처리
+            // 1. 이미지 다운로드 처리
             if (this.settings.downloadImages) {
-              // 저장될 기본 폴더 경로 결정
-              let baseFolderPath = '';
-              if (saveMode === 'overwrite' && file) {
-                baseFolderPath = file.parent ? file.parent.path : '';
-              } else {
-                baseFolderPath = this.settings.defaultDownloadPath.trim();
-              }
-              if (baseFolderPath.endsWith('/')) baseFolderPath = baseFolderPath.slice(0, -1);
-              if (baseFolderPath === '/') baseFolderPath = '';
+              const axiosClient = createConfluenceClient({
+                baseUrl: this.settings.baseUrl,
+                auth: { username: this.settings.email || undefined, token: this.settings.apiToken }
+              });
+              const contentApi = new ConfluenceContentApi(axiosClient);
+              
+              // 임시로 contentApi를 이용해 storageXml을 가져와 이미지 목록 추출
+              const initialData = await downloadPage(
+                this.settings.baseUrl,
+                this.settings.email,
+                this.settings.apiToken,
+                pageId
+              );
 
-              const imgSubDir = this.settings.imageDir || 'assets';
-              const imgDir = baseFolderPath ? `${baseFolderPath}/${imgSubDir}` : imgSubDir;
-              
-              console.log(`[TDE Collab] Image download enabled. Target dir: ${imgDir}`);
-              
-              // 폴더 계층 생성 (Recursive)
-              const parts = imgDir.split('/');
-              let currentPath = '';
-              for (const part of parts) {
-                if (!part) continue;
-                currentPath = currentPath ? `${currentPath}/${part}` : part;
-                if (!this.app.vault.getAbstractFileByPath(currentPath)) {
-                  console.log(`[TDE Collab] Creating directory: ${currentPath}`);
-                  await this.app.vault.createFolder(currentPath);
-                }
+              const imgDir = this.settings.imageDir || 'assets';
+              if (!this.app.vault.getAbstractFileByPath(imgDir)) {
+                await this.app.vault.createFolder(imgDir);
               }
 
               const vaultPath = (this.app.vault.adapter as any).getBasePath();
@@ -125,8 +105,7 @@ export default class TdecollabPlugin extends Plugin {
               });
 
               new Notice('이미지 다운로드 중...');
-              const rawImageUrlMap = await downloader.downloadAllImages(storageXml);
-              console.log(`[TDE Collab] Downloaded ${rawImageUrlMap.size} images.`);
+              const rawImageUrlMap = await downloader.downloadAllImages(initialData.storageXml);
               
               imageUrlMap = new Map();
               for (const [key, absPath] of rawImageUrlMap.entries()) {
@@ -135,12 +114,17 @@ export default class TdecollabPlugin extends Plugin {
               }
             }
 
-            // 3. 마크다운 변환
-            const converter = new StorageToMarkdownConverter({ baseUrl: this.settings.baseUrl });
-            const finalMarkdown = converter.convert(storageXml, imageUrlMap);
+            // 2. 최종 마크다운 변환
+            const { title, markdown } = await downloadPage(
+              this.settings.baseUrl,
+              this.settings.email,
+              this.settings.apiToken,
+              pageId,
+              imageUrlMap
+            );
             
             const fmString = `---\nconfluence_page_id: ${pageId}\n---`;
-            const finalContent = `${fmString}\n\n${finalMarkdown}`;
+            const finalContent = `${fmString}\n\n${markdown}`;
 
             if (saveMode === 'overwrite' && file) {
               await this.app.vault.modify(file, finalContent);
@@ -154,7 +138,7 @@ export default class TdecollabPlugin extends Plugin {
                 await this.app.vault.createFolder(folderPath);
               }
 
-              let newFileName = `${pageData.title}.md`;
+              let newFileName = `${title}.md`;
               newFileName = newFileName.replace(/[\\/:*?"<>|]/g, '-');
               
               let newFilePath = folderPath ? `${folderPath}/${newFileName}` : newFileName;
@@ -173,7 +157,7 @@ export default class TdecollabPlugin extends Plugin {
               await leaf.openFile(newFile);
             }
           } catch (e: any) {
-            console.error('[TDE Collab] Download failed:', e);
+            console.error(e);
             new Notice(`다운로드 실패: ${e.message}`);
           }
         }).open();

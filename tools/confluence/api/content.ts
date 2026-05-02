@@ -155,27 +155,9 @@ export class ConfluenceContentApi {
     }
 
     async downloadAttachment(downloadUrl: string): Promise<Buffer> {
-        const axios = (await import('axios')).default;
-        // Strip leading slash to respect baseURL path (like /wiki)
-        let targetUrl = downloadUrl.startsWith('/') ? downloadUrl.substring(1) : downloadUrl;
-        
-        // If it's a full URL, use it directly. Otherwise, combine with baseURL.
-        if (!targetUrl.startsWith('http')) {
-            const baseURL = this.client.defaults.baseURL?.endsWith('/') 
-                ? this.client.defaults.baseURL 
-                : `${this.client.defaults.baseURL}/`;
-            targetUrl = `${baseURL}${targetUrl}`;
-        }
-
-        // Use a clean axios instance for downloading to avoid sending Confluence Auth headers to redirected S3 URLs.
-        // We only add the Auth header if it's the same domain as Confluence.
-        const response = await axios.get(targetUrl, {
-            responseType: 'arraybuffer',
-            headers: targetUrl.includes(this.client.defaults.baseURL || '') 
-                ? { ...this.client.defaults.headers.common, ...this.client.defaults.headers.get }
-                : {}
+        const response = await this.client.get(downloadUrl, {
+            responseType: 'arraybuffer'
         });
-        
         return Buffer.from(response.data);
     }
 }
