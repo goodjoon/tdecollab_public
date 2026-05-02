@@ -1,7 +1,8 @@
-import { Plugin, Notice, MarkdownView } from 'obsidian';
+import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
+import { UploadModal } from './ui/UploadModal.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -26,28 +27,19 @@ export default class TdecollabPlugin extends Plugin {
         const content = await this.app.vault.read(file);
         const fm = extractFrontmatter(content);
         const pageId = fm?.confluence_page_id;
-        const title = file.basename;
 
-        try {
-          new Notice('Uploading to Confluence...');
-          const res = await uploadMarkdown(
-            this.settings.baseUrl,
-            this.settings.email,
-            this.settings.apiToken,
-            this.settings.defaultSpaceKey,
-            title,
-            content,
-            pageId
-          );
-          
-          if (!pageId && res.id) {
-            const newContent = updateOrInsertFrontmatter(content, 'confluence_page_id', res.id);
-            await this.app.vault.modify(file, newContent);
-          }
-          new Notice('업로드 성공!');
-        } catch (e: any) {
-          console.error(e);
-          new Notice(`업로드 실패: ${e.message}`);
+        if (pageId) {
+          // 문서 업데이트는 부모 ID 불필요하므로 즉시 실행
+          await this.executeUpload(file, content, this.settings.defaultSpaceKey, pageId, undefined);
+        } else {
+          // 새 문서 생성 시 Modal 띄움
+          new UploadModal(this.app, this.settings.defaultSpaceKey, async (spaceKey, parentId) => {
+            if (!spaceKey) {
+              new Notice('Space Key는 필수 입력사항입니다.');
+              return;
+            }
+            await this.executeUpload(file, content, spaceKey, undefined, parentId);
+          }).open();
         }
       }
     });
@@ -93,6 +85,32 @@ export default class TdecollabPlugin extends Plugin {
         }
       }
     });
+  }
+
+  async executeUpload(file: TFile, content: string, spaceKey: string, pageId?: string, parentId?: string) {
+    const title = file.basename;
+    try {
+      new Notice('Uploading to Confluence...');
+      const res = await uploadMarkdown(
+        this.settings.baseUrl,
+        this.settings.email,
+        this.settings.apiToken,
+        spaceKey,
+        title,
+        content,
+        pageId,
+        parentId
+      );
+      
+      if (!pageId && res.id) {
+        const newContent = updateOrInsertFrontmatter(content, 'confluence_page_id', res.id);
+        await this.app.vault.modify(file, newContent);
+      }
+      new Notice('업로드 성공!');
+    } catch (e: any) {
+      console.error(e);
+      new Notice(`업로드 실패: ${e.message}`);
+    }
   }
 
   onunload() {}

@@ -10,7 +10,8 @@ export async function uploadMarkdown(
   spaceKey: string,
   title: string,
   markdown: string, 
-  pageId?: string
+  pageId?: string,
+  parentId?: string
 ) {
   const converter = new MarkdownToStorageConverter({ baseUrl });
   const storageXml = await converter.convert(markdown);
@@ -26,7 +27,7 @@ export async function uploadMarkdown(
     const page = await contentApi.getPage(pageId);
     return await contentApi.updatePage({ id: pageId, version: page.version.number, title, body: storageXml });
   } else {
-    return await contentApi.createPage({ spaceKey, title, body: storageXml });
+    return await contentApi.createPage({ spaceKey, title, body: storageXml, parentId });
   }
 }
 
