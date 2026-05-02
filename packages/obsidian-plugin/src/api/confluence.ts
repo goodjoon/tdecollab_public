@@ -35,7 +35,8 @@ export async function downloadPage(
   baseUrl: string, 
   email: string, 
   token: string, 
-  pageId: string
+  pageId: string,
+  imageUrlMap?: Map<string, string>
 ) {
   const axiosClient = createConfluenceClient({
     baseUrl,
@@ -46,7 +47,7 @@ export async function downloadPage(
 
   const page = await contentApi.getPage(pageId);
   const converter = new StorageToMarkdownConverter({ baseUrl });
-  const markdown = await converter.convert(page.body.storage.value);
+  const markdown = await converter.convert(page.body.storage.value, imageUrlMap);
   
-  return { title: page.title, markdown };
+  return { title: page.title, markdown, storageXml: page.body.storage.value };
 }

@@ -7,6 +7,8 @@ export interface PluginSettings {
   apiToken: string;
   defaultSpaceKey: string;
   defaultDownloadPath: string;
+  downloadImages: boolean;
+  imageDir: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -14,7 +16,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   email: '',
   apiToken: '',
   defaultSpaceKey: '',
-  defaultDownloadPath: ''
+  defaultDownloadPath: '',
+  downloadImages: true,
+  imageDir: 'assets'
 };
 
 export class TdecollabSettingTab extends PluginSettingTab {
@@ -97,6 +101,30 @@ export class TdecollabSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.defaultDownloadPath)
           .onChange(async (value) => {
             this.plugin.settings.defaultDownloadPath = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Download Images')
+      .setDesc('Confluence 페이지 다운로드 시 이미지 파일도 함께 다운로드합니다.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.downloadImages)
+        .onChange(async (value) => {
+          this.plugin.settings.downloadImages = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName('Image Storage Directory')
+      .setDesc('이미지 파일이 저장될 상대 폴더 경로입니다.')
+      .addText(text => {
+        text.inputEl.style.width = '450px';
+        return text
+          .setPlaceholder('예: assets')
+          .setValue(this.plugin.settings.imageDir)
+          .onChange(async (value) => {
+            this.plugin.settings.imageDir = value;
             await this.plugin.saveSettings();
           });
       });

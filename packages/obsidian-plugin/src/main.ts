@@ -1,9 +1,13 @@
 import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
+import * as path from 'path';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
 import { UploadModal } from './ui/UploadModal.js';
 import { DownloadModal } from './ui/DownloadModal.js';
+import { ImageDownloader } from '../../../tools/confluence/utils/image-downloader.js';
+import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
+import { createConfluenceClient } from '../../../tools/confluence/api/client.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -67,11 +71,56 @@ export default class TdecollabPlugin extends Plugin {
 
           try {
             new Notice('Downloading from Confluence...');
+            
+            let imageUrlMap: Map<string, string> | undefined;
+            
+            // 1. 이미지 다운로드 처리
+            if (this.settings.downloadImages) {
+              const axiosClient = createConfluenceClient({
+                baseUrl: this.settings.baseUrl,
+                auth: { username: this.settings.email || undefined, token: this.settings.apiToken }
+              });
+              const contentApi = new ConfluenceContentApi(axiosClient);
+              
+              // 임시로 contentApi를 이용해 storageXml을 가져와 이미지 목록 추출
+              const initialData = await downloadPage(
+                this.settings.baseUrl,
+                this.settings.email,
+                this.settings.apiToken,
+                pageId
+              );
+
+              const imgDir = this.settings.imageDir || 'assets';
+              if (!this.app.vault.getAbstractFileByPath(imgDir)) {
+                await this.app.vault.createFolder(imgDir);
+              }
+
+              const vaultPath = (this.app.vault.adapter as any).getBasePath();
+              const absoluteImgDir = path.join(vaultPath, imgDir);
+
+              const downloader = new ImageDownloader(contentApi, {
+                outputDir: absoluteImgDir,
+                pageId: pageId,
+                baseUrl: this.settings.baseUrl
+              });
+
+              new Notice('이미지 다운로드 중...');
+              const rawImageUrlMap = await downloader.downloadAllImages(initialData.storageXml);
+              
+              imageUrlMap = new Map();
+              for (const [key, absPath] of rawImageUrlMap.entries()) {
+                const relPath = path.relative(vaultPath, absPath);
+                imageUrlMap.set(key, relPath);
+              }
+            }
+
+            // 2. 최종 마크다운 변환
             const { title, markdown } = await downloadPage(
               this.settings.baseUrl,
               this.settings.email,
               this.settings.apiToken,
-              pageId
+              pageId,
+              imageUrlMap
             );
             
             const fmString = `---\nconfluence_page_id: ${pageId}\n---`;
