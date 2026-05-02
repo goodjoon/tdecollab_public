@@ -12,6 +12,16 @@ Confluence, JIRA, GitLab을 하나의 CLI / TUI / MCP 서버로 통합 제공하
 | **JIRA** | 이슈 CRUD, JQL 검색, 상태 변경(트랜지션), 코멘트 관리, 프로젝트/보드 조회 |
 | **GitLab** | 프로젝트 조회, MR 관리, 파이프라인 조회, 브랜치 관리, 파일 조회 |
 
+## Obsidian 플러그인
+
+현재 활성화된 마크다운 노트를 Confluence 페이지로 업로드하거나, 반대로 다운로드할 수 있는 Obsidian 플러그인을 제공합니다.
+
+### 설치 (BRAT)
+1. Obsidian에서 **BRAT** 플러그인을 먼저 설치 및 활성화합니다.
+2. `BRAT: Add a beta plugin for testing` 명령을 실행합니다.
+3. **`goodjoon/tdecollab_public`** 주소를 입력하여 설치합니다.
+4. 설정에서 **TDE Collab Confluence**를 활성화합니다.
+
 ## 요구사항
 
 - Node.js 20 이상
