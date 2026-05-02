@@ -158,6 +158,14 @@ export class ConfluenceContentApi {
         const response = await this.client.get(downloadUrl, {
             responseType: 'arraybuffer'
         });
-        return Buffer.from(response.data);
+        const data = response.data;
+        if (data instanceof Buffer) {
+            return data;
+        }
+        if (data instanceof ArrayBuffer) {
+            return Buffer.from(data);
+        }
+        // Fallback for other types (e.g. Uint8Array)
+        return Buffer.from(data);
     }
 }

@@ -1,9 +1,14 @@
 import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
+import * as path from 'path';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
+import { StorageToMarkdownConverter } from '../../../tools/confluence/converters/storage-to-md.js';
 import { UploadModal } from './ui/UploadModal.js';
 import { DownloadModal } from './ui/DownloadModal.js';
+import { ImageDownloader } from '../../../tools/confluence/utils/image-downloader.js';
+import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
+import { createConfluenceClient } from '../../../tools/confluence/api/client.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -66,16 +71,79 @@ export default class TdecollabPlugin extends Plugin {
           }
 
           try {
+            console.log(`[TDE Collab] Downloading page: ${pageId}, saveMode: ${saveMode}`);
             new Notice('Downloading from Confluence...');
-            const { title, markdown } = await downloadPage(
-              this.settings.baseUrl,
-              this.settings.email,
-              this.settings.apiToken,
-              pageId
-            );
+            
+            // 1. Confluence 클라이언트 초기화
+            const axiosClient = createConfluenceClient({
+              baseUrl: this.settings.baseUrl,
+              auth: { username: this.settings.email || undefined, token: this.settings.apiToken }
+            });
+            const contentApi = new ConfluenceContentApi(axiosClient);
+
+            // 2. 페이지 데이터 가져오기 (Storage XML 포함)
+            const pageData = await contentApi.getPage(pageId);
+            const storageXml = pageData.body.storage.value;
+            console.log(`[TDE Collab] Page data fetched: ${pageData.title}`);
+
+            let imageUrlMap: Map<string, string> | undefined;
+            
+            // 3. 이미지 다운로드 처리
+            if (this.settings.downloadImages) {
+              // 저장될 기본 폴더 경로 결정
+              let baseFolderPath = '';
+              if (saveMode === 'overwrite' && file) {
+                baseFolderPath = file.parent ? file.parent.path : '';
+              } else {
+                baseFolderPath = this.settings.defaultDownloadPath.trim();
+              }
+              if (baseFolderPath.endsWith('/')) baseFolderPath = baseFolderPath.slice(0, -1);
+              if (baseFolderPath === '/') baseFolderPath = '';
+
+              const imgSubDir = this.settings.imageDir || 'assets';
+              const imgDir = baseFolderPath ? `${baseFolderPath}/${imgSubDir}` : imgSubDir;
+              
+              console.log(`[TDE Collab] Image download enabled. Target dir: ${imgDir}`);
+              
+              // 폴더 계층 생성 (Recursive)
+              const parts = imgDir.split('/');
+              let currentPath = '';
+              for (const part of parts) {
+                if (!part) continue;
+                currentPath = currentPath ? `${currentPath}/${part}` : part;
+                if (!this.app.vault.getAbstractFileByPath(currentPath)) {
+                  console.log(`[TDE Collab] Creating directory: ${currentPath}`);
+                  await this.app.vault.createFolder(currentPath);
+                }
+              }
+
+              const vaultPath = (this.app.vault.adapter as any).getBasePath();
+              const absoluteImgDir = path.join(vaultPath, imgDir);
+
+              const downloader = new ImageDownloader(contentApi, {
+                outputDir: absoluteImgDir,
+                pageId: pageId,
+                baseUrl: this.settings.baseUrl
+              });
+
+              new Notice('이미지 다운로드 중...');
+              const rawImageUrlMap = await downloader.downloadAllImages(storageXml);
+              console.log(`[TDE Collab] Downloaded ${rawImageUrlMap.size} images.`);
+              
+              // 마크다운 내에서는 Vault 루트 기준의 상대 경로를 사용
+              imageUrlMap = new Map();
+              for (const [key, absPath] of rawImageUrlMap.entries()) {
+                const relPath = path.relative(vaultPath, absPath);
+                imageUrlMap.set(key, relPath);
+              }
+            }
+
+            // 4. 마크다운 변환 (저장된 이미지 맵 적용)
+            const converter = new StorageToMarkdownConverter({ baseUrl: this.settings.baseUrl });
+            const finalMarkdown = converter.convert(storageXml, imageUrlMap);
             
             const fmString = `---\nconfluence_page_id: ${pageId}\n---`;
-            const finalContent = `${fmString}\n\n${markdown}`;
+            const finalContent = `${fmString}\n\n${finalMarkdown}`;
 
             if (saveMode === 'overwrite' && file) {
               await this.app.vault.modify(file, finalContent);
@@ -89,7 +157,7 @@ export default class TdecollabPlugin extends Plugin {
                 await this.app.vault.createFolder(folderPath);
               }
 
-              let newFileName = `${title}.md`;
+              let newFileName = `${pageData.title}.md`;
               newFileName = newFileName.replace(/[\\/:*?"<>|]/g, '-');
               
               let newFilePath = folderPath ? `${folderPath}/${newFileName}` : newFileName;
@@ -108,7 +176,7 @@ export default class TdecollabPlugin extends Plugin {
               await leaf.openFile(newFile);
             }
           } catch (e: any) {
-            console.error(e);
+            console.error('[TDE Collab] Download failed:', e);
             new Notice(`다운로드 실패: ${e.message}`);
           }
         }).open();
