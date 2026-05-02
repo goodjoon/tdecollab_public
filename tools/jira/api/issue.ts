@@ -37,7 +37,7 @@ export class JiraIssueApi {
             Object.assign(fields, params.customFields);
         }
 
-        const response = await this.client.post('/rest/api/2/issue', { fields });
+        const response = await this.client.post('rest/api/2/issue', { fields });
         return response.data;
     }
 

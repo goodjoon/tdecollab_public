@@ -81,22 +81,29 @@ export default class TdecollabPlugin extends Plugin {
               await this.app.vault.modify(file, finalContent);
               new Notice('다운로드하여 현재 문서를 덮어썼습니다!');
             } else {
-              // 새 파일 생성 (중복 이름 회피 로직 포함)
+              // 새 파일 생성 경로 결정
+              let folderPath = this.settings.defaultDownloadPath.trim();
+              if (folderPath.endsWith('/')) folderPath = folderPath.slice(0, -1);
+              
+              if (folderPath && !this.app.vault.getAbstractFileByPath(folderPath)) {
+                await this.app.vault.createFolder(folderPath);
+              }
+
               let newFileName = `${title}.md`;
-              // 유효하지 않은 파일 이름 문자 치환 (macOS/Windows 호환)
               newFileName = newFileName.replace(/[\\/:*?"<>|]/g, '-');
               
-              let newFilePath = newFileName;
+              let newFilePath = folderPath ? `${folderPath}/${newFileName}` : newFileName;
               let counter = 1;
               while (this.app.vault.getAbstractFileByPath(newFilePath)) {
-                newFilePath = `${newFileName.replace('.md', '')} (${counter}).md`;
+                newFilePath = folderPath 
+                  ? `${folderPath}/${newFileName.replace('.md', '')} (${counter}).md`
+                  : `${newFileName.replace('.md', '')} (${counter}).md`;
                 counter++;
               }
               
               const newFile = await this.app.vault.create(newFilePath, finalContent);
               new Notice(`'${newFilePath}' 파일로 다운로드 완료!`);
               
-              // 새 파일을 현재 창에 열어줌
               const leaf = this.app.workspace.getLeaf(true);
               await leaf.openFile(newFile);
             }

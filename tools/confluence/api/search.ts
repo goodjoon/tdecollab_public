@@ -6,7 +6,7 @@ export class ConfluenceSearchApi {
 
     async searchByCql(cql: string, start = 0, limit = 25, expand?: string[]): Promise<ConfluenceSearchResponse> {
         const expandParam = expand ? expand.join(',') : 'body.storage,version,space,metadata.labels';
-        const response = await this.client.get('/rest/api/content/search', {
+        const response = await this.client.get('rest/api/content/search', {
             params: {
                 cql,
                 start,

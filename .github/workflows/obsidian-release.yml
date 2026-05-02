@@ -33,9 +33,6 @@ jobs:
         run: |
           cd packages/obsidian-plugin
           pnpm build
-          mkdir -p obsidian-tdecollab
-          cp main.js manifest.json obsidian-tdecollab/
-          zip -r obsidian-tdecollab.zip obsidian-tdecollab/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -43,6 +40,5 @@ jobs:
           files: |
             packages/obsidian-plugin/main.js
             packages/obsidian-plugin/manifest.json
-            packages/obsidian-plugin/obsidian-tdecollab.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
