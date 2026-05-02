@@ -6,13 +6,15 @@ export interface PluginSettings {
   email: string;
   apiToken: string;
   defaultSpaceKey: string;
+  defaultDownloadPath: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
   baseUrl: '',
   email: '',
   apiToken: '',
-  defaultSpaceKey: ''
+  defaultSpaceKey: '',
+  defaultDownloadPath: ''
 };
 
 export class TdecollabSettingTab extends PluginSettingTab {
@@ -81,6 +83,20 @@ export class TdecollabSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.defaultSpaceKey)
           .onChange(async (value) => {
             this.plugin.settings.defaultSpaceKey = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Default Download Path (선택)')
+      .setDesc('신규 페이지 다운로드 시 저장될 기본 폴더 경로 (예: Confluence/Downloads)')
+      .addText(text => {
+        text.inputEl.style.width = '450px';
+        return text
+          .setPlaceholder('Vault 내 상대경로 입력')
+          .setValue(this.plugin.settings.defaultDownloadPath)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultDownloadPath = value;
             await this.plugin.saveSettings();
           });
       });
