@@ -53,7 +53,7 @@ export class ImageDownloader {
         while ((match = gliffyRegex.exec(html)) !== null) {
             references.push({
                 type: 'attachment',
-                filename: `${match[1]}.png`, // Gliffy는 보통 png로 저장됨
+                filename: `${match[1]}.png`,
                 originalTag: match[0],
             });
         }
@@ -72,13 +72,13 @@ export class ImageDownloader {
         const imgRegex = /<img\s+[^>]*\/?>/g;
         while ((match = imgRegex.exec(html)) !== null) {
             const imgTag = match[0];
-            const srcMatch = /src=["']([^"']+)["']/.exec(imgTag);
+            const srcMatch = /src=["']([^"']+)["']/.exec(imgTag) || /src=([^ >]+)/.exec(imgTag);
             const altMatch = /alt=["']([^"']*)["']/.exec(imgTag);
 
             if (srcMatch) {
                 references.push({
                     type: 'url',
-                    url: srcMatch[1],
+                    url: srcMatch[1].replace(/["']/g, ''),
                     originalTag: imgTag,
                     altText: altMatch ? altMatch[1] : '',
                 });

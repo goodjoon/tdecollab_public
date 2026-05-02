@@ -136,36 +136,8 @@ export class StorageToMarkdownConverter {
         let processedHtml = storageHtml
             .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, (match, p1) => {
                 return `__CDATA_START__${p1}__CDATA_END__`;
-            });
-
-        // 1. 이미지 및 다이어그램 매크로 변환 (ac:image, drawio, gliffy -> img)
-        // 일반 첨부파일 이미지
-        processedHtml = processedHtml.replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
-            const altMatch = attrs.match(/ac:alt=["']([^"']+)["']/i);
-            const alt = altMatch ? altMatch[1] : filename;
-            return `<img src="${filename}" alt="${alt}" />`;
-        });
-
-        // 외부 URL 이미지
-        processedHtml = processedHtml.replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value\s*=\s*["']([^"']+)["'][^>]*\/>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
-            const altMatch = attrs.match(/ac:alt=["']([^"']+)["']/i);
-            const alt = altMatch ? altMatch[1] : '';
-            return `<img src="${url}" alt="${alt}" />`;
-        });
-
-        // Draw.io 매크로 변환
-        processedHtml = processedHtml.replace(/<ac:structured-macro[^>]*ac:name=["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
-            return `<img src="${filename}" alt="${filename}" />`;
-        });
-
-        // Gliffy 매크로 변환
-        processedHtml = processedHtml.replace(/<ac:structured-macro[^>]*ac:name=["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
-            const filename = `${name}.png`;
-            return `<img src="${filename}" alt="${filename}" />`;
-        });
-
-        // 기타 매크로 보존 처리
-        processedHtml = processedHtml
+            })
+            .replace(/<ac:structured-macro\s+ac:name="([^"]*)"/gi, '<div data-macro-name-tag data-macro-name="$1"')
             .replace(/<\/ac:structured-macro>/gi, '</div>')
             .replace(/<ac:parameter\s+ac:name="([^"]*)"/gi, '<div data-macro-param-tag data-macro-param-name="$1"')
             .replace(/<\/ac:parameter>/gi, '</div>')
@@ -174,6 +146,26 @@ export class StorageToMarkdownConverter {
             .replace(/<ac:rich-text-body>/gi, '<div data-macro-rich-body>')
             .replace(/<\/ac:rich-text-body>/gi, '</div>');
 
+        // Draw.io / Gliffy 다이어그램을 이미지 태그로 변환 (이미지 추출용)
+        processedHtml = processedHtml
+            .replace(/<ac:structured-macro[^>]*ac:name=["']drawio["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']filename["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, filename) => {
+                return `<img src="${filename}" alt="${filename}" />`;
+            })
+            .replace(/<ac:structured-macro[^>]*ac:name=["']gliffy["'][^>]*>[\s\S]*?<ac:parameter\s+ac:name=["']name["']>([^<]+)<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/gi, (match, name) => {
+                return `<img src="${name}.png" alt="${name}" />`;
+            });
+
+        // 일반 이미지 태그 변환
+        processedHtml = processedHtml.replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
+            const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+            const alt = altMatch ? altMatch[1] : filename;
+            return `<img src="${filename}" alt="${alt}" />`;
+        })
+            .replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
+                const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
+                const alt = altMatch ? altMatch[1] : '';
+                return `<img src="${url}" alt="${alt}" />`;
+            });
 
         // 2. DOM 파싱 (Browser/Node 분기)
         let document: Document;
