@@ -1,0 +1,27 @@
+{
+  "name": "obsidian-tdecollab",
+  "version": "1.0.0",
+  "description": "Obsidian Plugin for Confluence Sync",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0",
+    "punycode": "^2.3.1",
+    "tdecollab": "workspace:*",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "0.24.0",
+    "obsidian": "latest",
+    "tslib": "2.6.3",
+    "typescript": "5.6.3",
+    "vitest": "^3.0.0"
+  }
+}

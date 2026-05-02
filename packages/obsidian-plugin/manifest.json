@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-tdecollab",
+  "name": "TDE Collab Confluence",
+  "version": "1.0.0",
+  "minAppVersion": "1.1.15",
+  "description": "Upload/Download markdown to Confluence using TDE Collab core",
+  "author": "TDE Collab",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,78 @@
+{
+  "name": "tdecollab",
+  "version": "0.3.4",
+  "description": "Confluence, Jira, GitLab CLI / TUI / MCP 통합 도구",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "confluence",
+    "jira",
+    "gitlab",
+    "cli",
+    "tui",
+    "ink"
+  ],
+  "license": "MIT",
+  "author": "goodjoon <goodjoon@gmail.com>",
+  "homepage": "https://github.com/goodjoon/tdecollab#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goodjoon/tdecollab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/goodjoon/tdecollab/issues"
+  },
+  "type": "module",
+  "bin": {
+    "tdecollab": "dist/cli.js",
+    "tdecollab-server": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx watch tools/index.ts",
+    "cli": "tsx tools/cli.ts",
+    "tui": "tsx tools/tui/index.tsx",
+    "lint": "eslint tools/",
+    "format": "prettier --write 'tools/**/*.ts'",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@inkjs/ui": "^2.0.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "axios": "^1.7.9",
+    "chalk": "^5.4.1",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "cosmiconfig": "^9.0.1",
+    "dotenv": "^16.4.7",
+    "form-data": "^4.0.5",
+    "ink": "^7.0.1",
+    "jsdom": "^29.0.2",
+    "markdown-it": "^14.1.0",
+    "react": "19.2.4",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^28.0.1",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.2.14",
+    "@types/turndown": "^5.0.6",
+    "axios-mock-adapter": "^2.1.0",
+    "prettier": "^3.5.2",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

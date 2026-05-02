@@ -1,0 +1,314 @@
+import { Command } from 'commander';
+import fs from 'fs';
+import path from 'path';
+import { ConfluenceContentApi } from '../api/content.js';
+import { ConfluenceSpaceApi } from '../api/space.js';
+import { ConfluenceSearchApi } from '../api/search.js';
+import { ConfluenceLabelApi } from '../api/label.js';
+import { createConfluenceClient } from '../api/client.js';
+import { MarkdownToStorageConverter } from '../converters/md-to-storage.js';
+import { StorageToMarkdownConverter } from '../converters/storage-to-md.js';
+import { tryBuildJiraIssueMap } from '../converters/jira-enricher.js';
+import { loadConfluenceConfig } from '../../common/config.js';
+import { logger } from '../../common/logger.js';
+import chalk from 'chalk';
+import Table from 'cli-table3';
+
+export function registerConfluenceCommands(program: Command) {
+    const confluenceCmd = program.command('confluence')
+        .description('Confluence 관리');
+
+    // 공통 초기화 함수
+    const initClient = () => {
+        try {
+            const config = loadConfluenceConfig();
+            return createConfluenceClient(config);
+        } catch (e: any) {
+            console.error(chalk.red(`설정 로드 실패: ${e.message}`));
+            process.exit(1);
+        }
+    };
+
+    // --- Page Commands ---
+    const pageCmd = confluenceCmd.command('page').description('페이지 관리');
+
+    pageCmd.command('get <pageId>')
+        .description('페이지 조회')
+        .option('-r, --raw', 'Raw Storage Format 출력')
+        .option('-q, --quiet', '메타데이터 생략')
+        .option('-d, --download-images', '이미지 다운로드')
+        .option('--image-dir <path>', '이미지 저장 디렉토리', './images')
+        .option('-o, --output <file>', 'Markdown을 파일로 저장')
+        .action(async (pageId, options) => {
+            const client = initClient();
+            const api = new ConfluenceContentApi(client);
+            const config = loadConfluenceConfig();
+
+            try {
+                const page = await api.getPage(pageId);
+
+                if (!options.quiet) {
+                    console.log(chalk.bold(`Title: ${page.title}`));
+                    console.log(chalk.gray(`ID: ${page.id}`));
+                    console.log(`Space: ${page.space?.name} (${page.space?.key})`);
+                    console.log(`URL: ${page._links?.base}${page._links?.webui}`);
+                }
+
+                let content = '';
+
+                if (options.raw) {
+                    if (!options.quiet) console.log(chalk.dim('--- Content (Storage Format) ---'));
+                    if (page.body?.storage?.value) {
+                        content = page.body.storage.value;
+                    } else {
+                        if (!options.quiet) console.log(chalk.yellow('(No content)'));
+                    }
+                } else {
+                    if (!options.quiet) console.log(chalk.dim('--- Content (Markdown) ---'));
+                    if (page.body?.storage?.value) {
+                        let imageUrlMap: Map<string, string> | undefined;
+
+                        // 이미지 다운로드 옵션이 활성화된 경우
+                        if (options.downloadImages) {
+                            const { ImageDownloader } = await import('../utils/image-downloader.js');
+                            let baseDir = process.cwd();
+                            if (options.output) {
+                                baseDir = path.dirname(path.resolve(process.cwd(), options.output));
+                            }
+
+                            const imgDir = path.resolve(baseDir, options.imageDir);
+                            const downloader = new ImageDownloader(api, {
+                                outputDir: imgDir,
+                                pageId: page.id,
+                                baseUrl: config.baseUrl
+                            });
+
+                            console.log(chalk.blue('이미지 다운로드 중...'));
+                            imageUrlMap = await downloader.downloadAllImages(page.body.storage.value);
+
+                            // 절대 경로를 baseDir 기준 상대 경로로 변환 (Markdown url 경로용)
+                            for (const [key, absolutePath] of imageUrlMap.entries()) {
+                                let relPath = path.relative(baseDir, absolutePath);
+                                relPath = relPath.split(path.sep).join('/'); // URL 구분자 통일
+                                imageUrlMap.set(key, relPath);
+                            }
+                        }
+
+                        const storageToMd = new StorageToMarkdownConverter();
+                        const jiraIssueMap = await tryBuildJiraIssueMap(page.body.storage.value);
+                        content = storageToMd.convert(page.body.storage.value, imageUrlMap, jiraIssueMap);
+                    } else {
+                        if (!options.quiet) console.log(chalk.yellow('(No content)'));
+                    }
+                }
+
+                // 파일로 저장 또는 콘솔 출력
+                if (options.output) {
+                    const outputPath = path.resolve(process.cwd(), options.output);
+                    fs.writeFileSync(outputPath, content, 'utf-8');
+                    console.log(chalk.green(`파일 저장 완료: ${outputPath}`));
+                } else {
+                    console.log(content);
+                }
+            } catch (e: any) {
+                console.error(chalk.red(`Error: ${e.message}`));
+            }
+        });
+
+    pageCmd.command('create')
+        .requiredOption('-s, --space <key>', '스페이스 키')
+        .requiredOption('-t, --title <title>', '제목')
+        .option('-c, --content <content>', '내용 (Markdown 텍스트)')
+        .option('-f, --file <path>', '내용 파일 경로 (Markdown)')
+        .option('-p, --parent <id>', '부모 페이지 ID')
+        .description('페이지 생성')
+        .action(async (options) => {
+            const client = initClient();
+            const api = new ConfluenceContentApi(client);
+            const mdToStorage = new MarkdownToStorageConverter();
+
+            try {
+                let markdownContent = '';
+                let markdownDirPath = process.cwd();
+
+                if (options.file) {
+                    try {
+                        const filePath = path.resolve(process.cwd(), options.file);
+                        markdownDirPath = path.dirname(filePath);
+                        markdownContent = fs.readFileSync(filePath, 'utf-8');
+                    } catch (e: any) {
+                        console.error(chalk.red(`파일 읽기 실패: ${e.message}`));
+                        process.exit(1);
+                    }
+                } else if (options.content) {
+                    markdownContent = options.content;
+                } else {
+                    console.error(chalk.red('오류: --content 또는 --file 옵션 중 하나는 필수입니다.'));
+                    process.exit(1);
+                }
+
+                const page = await api.createPage({
+                    spaceKey: options.space,
+                    title: options.title,
+                    body: mdToStorage.convert(markdownContent),
+                    parentId: options.parent
+                });
+                console.log(chalk.green(`페이지 생성 완료: ${page.title} (ID: ${page.id})`));
+                console.log(`URL: ${page._links?.base}${page._links?.webui}`);
+
+                // 로컬 이미지 첨부파일 업로드 처리
+                if (options.file) {
+                    const localImages = mdToStorage.extractLocalImages(markdownContent);
+                    if (localImages.length > 0) {
+                        console.log(chalk.blue(`로컬 이미지 첨부파일 업로드 시작 (${localImages.length}개)...`));
+                        for (const imgSrc of localImages) {
+                            try {
+                                const imagePath = path.resolve(markdownDirPath, imgSrc);
+                                if (fs.existsSync(imagePath)) {
+                                    const fileBuffer = fs.readFileSync(imagePath);
+                                    const filename = path.basename(imgSrc);
+                                    let contentType = 'application/octet-stream';
+                                    if (filename.endsWith('.png')) contentType = 'image/png';
+                                    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+                                    else if (filename.endsWith('.svg')) contentType = 'image/svg+xml';
+                                    else if (filename.endsWith('.gif')) contentType = 'image/gif';
+
+                                    await api.uploadAttachment(page.id, filename, fileBuffer, contentType);
+                                    console.log(chalk.green(`  - 업로드 완료: ${filename}`));
+                                } else {
+                                    console.error(chalk.yellow(`  - 이미지 파일을 찾을 수 없습니다: ${imagePath}`));
+                                }
+                            } catch (uploadErr: any) {
+                                console.error(chalk.red(`  - 업로드 실패 (${imgSrc}): ${uploadErr.message}`));
+                            }
+                        }
+                    }
+                }
+            } catch (e: any) {
+                console.error(chalk.red(`생성 실패: ${e.message}`));
+            }
+        });
+
+    pageCmd.command('update <pageId>')
+        .description('페이지 내용 업데이트')
+        .option('-t, --title <title>', '변경할 제목 (생략 시 기존 제목 유지)')
+        .option('-c, --content <content>', '내용 (Markdown 텍스트)')
+        .option('-f, --file <path>', '내용 파일 경로 (Markdown)')
+        .action(async (pageId, options) => {
+            const client = initClient();
+            const api = new ConfluenceContentApi(client);
+            const mdToStorage = new MarkdownToStorageConverter();
+
+            try {
+                const currentPage = await api.getPage(pageId, ['version', 'title']);
+                const currentVersion = currentPage.version?.number ?? 1;
+                const currentTitle = currentPage.title;
+
+                let markdownContent = '';
+                let markdownDirPath = process.cwd();
+
+                if (options.file) {
+                    try {
+                        const filePath = path.resolve(process.cwd(), options.file);
+                        markdownDirPath = path.dirname(filePath);
+                        markdownContent = fs.readFileSync(filePath, 'utf-8');
+                    } catch (e: any) {
+                        console.error(chalk.red(`파일 읽기 실패: ${e.message}`));
+                        process.exit(1);
+                    }
+                } else if (options.content) {
+                    markdownContent = options.content;
+                } else {
+                    console.error(chalk.red('오류: --content 또는 --file 옵션 중 하나는 필수입니다.'));
+                    process.exit(1);
+                }
+
+                const updatedPage = await api.updatePage({
+                    id: pageId,
+                    title: options.title || currentTitle,
+                    body: mdToStorage.convert(markdownContent),
+                    version: currentVersion,
+                });
+
+                console.log(chalk.green(`페이지 업데이트 완료: ${updatedPage.title} (ID: ${updatedPage.id})`));
+                console.log(`버전: v${currentVersion} → v${currentVersion + 1}`);
+                console.log(`URL: ${updatedPage._links?.base}${updatedPage._links?.webui}`);
+
+                // 로컬 이미지 첨부파일 업로드 처리 (upsert)
+                if (options.file) {
+                    const localImages = mdToStorage.extractLocalImages(markdownContent);
+                    if (localImages.length > 0) {
+                        console.log(chalk.blue(`로컬 이미지 첨부파일 업로드 시작 (${localImages.length}개)...`));
+                        for (const imgSrc of localImages) {
+                            try {
+                                const imagePath = path.resolve(markdownDirPath, imgSrc);
+                                if (fs.existsSync(imagePath)) {
+                                    const fileBuffer = fs.readFileSync(imagePath);
+                                    const filename = path.basename(imgSrc);
+                                    let contentType = 'application/octet-stream';
+                                    if (filename.endsWith('.png')) contentType = 'image/png';
+                                    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+                                    else if (filename.endsWith('.svg')) contentType = 'image/svg+xml';
+                                    else if (filename.endsWith('.gif')) contentType = 'image/gif';
+                                    await api.uploadAttachment(updatedPage.id, filename, fileBuffer, contentType);
+                                    console.log(chalk.green(`  - 업로드 완료: ${filename}`));
+                                } else {
+                                    console.error(chalk.yellow(`  - 이미지 파일을 찾을 수 없습니다: ${imagePath}`));
+                                }
+                            } catch (uploadErr: any) {
+                                console.error(chalk.red(`  - 업로드 실패 (${imgSrc}): ${uploadErr.message}`));
+                            }
+                        }
+                    }
+                }
+            } catch (e: any) {
+                console.error(chalk.red(`업데이트 실패: ${e.message}`));
+            }
+        });
+
+    // --- Space Commands ---
+    const spaceCmd = confluenceCmd.command('space').description('스페이스 관리');
+
+    spaceCmd.command('list')
+        .description('스페이스 목록 조회')
+        .action(async () => {
+            const client = initClient();
+            const api = new ConfluenceSpaceApi(client);
+            try {
+                const spaces = await api.getSpaces();
+                const table = new Table({
+                    head: ['Key', 'Name', 'Type', 'ID'],
+                    style: { head: ['cyan'] }
+                });
+                spaces.forEach(s => table.push([s.key, s.name, s.type, s.id.toString()]));
+                console.log(table.toString());
+            } catch (e: any) {
+                console.error(chalk.red(`목록 조회 실패: ${e.message}`));
+            }
+        });
+
+    // --- Search Commands ---
+    confluenceCmd.command('search <cql>')
+        .description('CQL 검색')
+        .action(async (cql) => {
+            const client = initClient();
+            const api = new ConfluenceSearchApi(client);
+            try {
+                const result = await api.searchByCql(cql);
+                console.log(chalk.bold(`검색 결과: ${result.size}건 (총 ${result.totalSize}건)`));
+                const table = new Table({
+                    head: ['ID', 'Title', 'Space', 'URL'],
+                    style: { head: ['cyan'] }
+                });
+                result.results.forEach(p => table.push([
+                    p.id,
+                    p.title,
+                    p.space?.key || '',
+                    `${p._links?.base}${p._links?.webui}`
+                ]));
+                console.log(table.toString());
+            } catch (e: any) {
+                console.error(chalk.red(`검색 실패: ${e.message}`));
+            }
+        });
+}

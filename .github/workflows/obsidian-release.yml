@@ -1,0 +1,42 @@
+name: Release Obsidian Plugin
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'obsidian-*' # Trigger on tags like 'obsidian-1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Obsidian Plugin
+        run: |
+          cd packages/obsidian-plugin
+          pnpm build
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/obsidian-plugin/main.js
+            packages/obsidian-plugin/manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

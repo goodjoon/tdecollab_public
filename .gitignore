@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.tsbuildinfo
+coverage/
+.DS_Store
+.artifacts/
+files/
+.worktrees/
+
+# 사용자 로컬 (TUI presets / 개인 vault / 작업 폴더)
+.tdecollab.json
+.tdecollab_history.json
+.obsidian/
+90.Repository/
+.claude/
