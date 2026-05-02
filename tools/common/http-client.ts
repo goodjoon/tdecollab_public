@@ -14,15 +14,15 @@ export function createHttpClient(config: ServiceConfig): AxiosInstance {
 
     // 요청 인터셉터: 인증 헤더 주입 및 로깅
     client.interceptors.request.use((reqConfig) => {
-        // 1. 토큰 기반 Bearer 인증 (Confluence/JIRA PAT 권장 방식)
-        if (config.auth.token && !reqConfig.headers.Authorization && !reqConfig.headers['PRIVATE-TOKEN']) {
-            // GitLab은 PRIVATE-TOKEN 헤더를 선호하므로 제외
-            reqConfig.headers.Authorization = `Bearer ${config.auth.token}`;
-        }
-        // 2. Basic 인증 (Username + Password/Token) - Bearer가 없을 때만 사용
-        else if (config.auth.username && config.auth.token && !reqConfig.headers.Authorization) {
+        // 1. Basic 인증 (Username + Token)
+        if (config.auth.username && config.auth.token && !reqConfig.headers.Authorization) {
             const token = Buffer.from(`${config.auth.username}:${config.auth.token}`).toString('base64');
             reqConfig.headers.Authorization = `Basic ${token}`;
+        }
+        // 2. 토큰 기반 Bearer 인증 (Confluence/JIRA PAT 권장 방식)
+        else if (config.auth.token && !reqConfig.headers.Authorization && !reqConfig.headers['PRIVATE-TOKEN']) {
+            // GitLab은 PRIVATE-TOKEN 헤더를 선호하므로 제외
+            reqConfig.headers.Authorization = `Bearer ${config.auth.token}`;
         }
 
         logger.debug(`[HTTP Request] ${reqConfig.method?.toUpperCase()} ${reqConfig.url}`, {

@@ -17,7 +17,7 @@ export async function uploadMarkdown(
   
   const axiosClient = createConfluenceClient({
     baseUrl,
-    auth: { type: 'basic', email, apiToken: token }
+    auth: { username: email || undefined, token }
   });
   
   const contentApi = new ConfluenceContentApi(axiosClient);
@@ -38,7 +38,7 @@ export async function downloadPage(
 ) {
   const axiosClient = createConfluenceClient({
     baseUrl,
-    auth: { type: 'basic', email, apiToken: token }
+    auth: { username: email || undefined, token }
   });
   
   const contentApi = new ConfluenceContentApi(axiosClient);
