@@ -32,29 +32,38 @@ export class TdecollabSettingTab extends PluginSettingTab {
     containerEl.createEl('p', { text: '사용 전 Confluence API URL 및 인증 정보를 입력해주세요.' });
 
     new Setting(containerEl)
-      .setName('Confluence Base URL')
+      .setName('Confluence Base URL (필수)')
       .setDesc('예: https://your-domain.atlassian.net')
-      .addText(text => text
-        .setPlaceholder('Enter URL')
-        .setValue(this.plugin.settings.baseUrl)
-        .onChange(async (value) => {
-          this.plugin.settings.baseUrl = value;
-          await this.plugin.saveSettings();
-        }));
+      .addText(text => {
+        text.inputEl.style.width = '450px';
+        return text
+          .setPlaceholder('Enter URL')
+          .setValue(this.plugin.settings.baseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.baseUrl = value;
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
-      .setName('Email / Username')
-      .addText(text => text
-        .setValue(this.plugin.settings.email)
-        .onChange(async (value) => {
-          this.plugin.settings.email = value;
-          await this.plugin.saveSettings();
-        }));
+      .setName('Email / Username (필수)')
+      .setDesc('Confluence 계정 이메일 또는 아이디입니다.')
+      .addText(text => {
+        text.inputEl.style.width = '450px';
+        return text
+          .setValue(this.plugin.settings.email)
+          .onChange(async (value) => {
+            this.plugin.settings.email = value;
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
-      .setName('API Token')
+      .setName('API Token (필수)')
+      .setDesc('Confluence 개인 접근 토큰 (PAT)')
       .addText(text => {
         text.inputEl.type = 'password';
+        text.inputEl.style.width = '450px';
         return text
           .setValue(this.plugin.settings.apiToken)
           .onChange(async (value) => {
@@ -64,12 +73,16 @@ export class TdecollabSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Default Space Key')
-      .addText(text => text
-        .setValue(this.plugin.settings.defaultSpaceKey)
-        .onChange(async (value) => {
-          this.plugin.settings.defaultSpaceKey = value;
-          await this.plugin.saveSettings();
-        }));
+      .setName('Default Space Key (선택)')
+      .setDesc('새 문서 업로드 시 기본 스페이스 키 (예: DEV)')
+      .addText(text => {
+        text.inputEl.style.width = '450px';
+        return text
+          .setValue(this.plugin.settings.defaultSpaceKey)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultSpaceKey = value;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 }
