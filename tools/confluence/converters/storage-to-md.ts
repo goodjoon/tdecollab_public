@@ -156,9 +156,17 @@ export class StorageToMarkdownConverter {
                 return `<img src="${url}" alt="${alt}" />`;
             });
 
-        // 2. JSDOM 파싱
-        const dom = new JSDOM(processedHtml);
-        const document = dom.window.document;
+        // 2. DOM 파싱 (Browser/Node 분기)
+        let document: Document;
+        if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+            const parser = new window.DOMParser();
+            document = parser.parseFromString(processedHtml, 'text/html');
+        } else {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { JSDOM } = require('jsdom');
+            const dom = new JSDOM(processedHtml);
+            document = dom.window.document;
+        }
 
         // 이미지 처리
         if (imageUrlMap && imageUrlMap.size > 0) {
