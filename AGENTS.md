@@ -133,6 +133,51 @@ tools/
 - MCP tool naming: `{service}_{action}_{resource}` (예: `confluence_get_page`, `jira_create_issue`)
 - 모든 파일은 `.js` 확장자로 import (ESM + tsup 빌드 규칙)
 
+## Git & Repository 관리 규칙 (보안 및 배포)
+
+이 프로젝트는 사내용(Private)과 공개용(Public) 레포지토리를 병행 운영하며, 커밋 히스토리를 분리해서 관리한다.
+
+### 1. 브랜치 및 리모트 구성
+- **`main` 브랜치**: 모든 작업이 이루어지는 메인 브랜치. 사내 정보가 포함된 전체 커밋 히스토리가 남으며, `twin`(사내 GitLab)과 `origin`(작업용 Private GitHub)에 푸시한다.
+- **`release` 브랜치**: 과거 히스토리가 없는 **Orphan** 브랜치. 공개용 GitHub(`public`)에 릴리즈할 때만 사용한다.
+- **`origin` 리모트**: 작업용 Private GitHub (`goodjoon/tdecollab`)
+- **`twin` 리모트**: 사내 GitLab (`gitlab.tde.sktelecom.com`)
+- **`public` 리모트**: 공개용 Public GitHub (`goodjoon/tdecollab_public`)
+
+### 2. 배포 및 동기화 워크플로우
+
+#### 평소 개발 (Private)
+- 항상 `main` 브랜치에서 작업하고 `twin` 및 `origin` 리모트에 푸시한다.
+
+#### 공개용 릴리즈 (Public Release)
+1. `release` 브랜치로 이동하여 `main`의 최신 파일 내용만 가져온다 (히스토리 제외).
+   ```bash
+   git checkout release
+   git checkout main -- .
+   git commit -m "Release v1.0.x: 최신 기능 반영"
+   ```
+2. 공개용 저장소(`public`)의 `main` 브랜치로 푸시한다.
+   ```bash
+   git push public release:main
+   ```
+3. 태그를 달아 자동 배포를 트리거한다.
+   ```bash
+   git tag obsidian-1.0.x
+   git push public obsidian-1.0.x
+   ```
+
+#### 실수로 `release`에서 작업한 경우 (역방향 동기화)
+1. `main` 브랜치로 이동하여 파일 내용만 복사해온다.
+   ```bash
+   git checkout main
+   git checkout release -- .
+   git commit -m "sync: release 브랜치의 수정 사항을 main에 반영"
+   ```
+
+**🚨 주의 사항 (보안)**:
+- **절대로 `main` 브랜치를 `public` 리모트에 직접 푸시하지 않는다.** 사내 민감 정보 히스토리가 외부로 유출될 수 있다.
+- 공개용 릴리즈 시에는 항상 `release` 브랜치를 경유하여 히스토리를 세탁해야 한다.
+
 ## 커밋 규칙
 - 형식: `<type>(<scope>): <한국어 설명>`
 - `type`: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
