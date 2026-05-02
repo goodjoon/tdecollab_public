@@ -46,7 +46,7 @@ export class TdecollabSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Email / Username (필수)')
+      .setName('Email / Username (선택)')
       .setDesc('Confluence 계정 이메일 또는 아이디입니다.')
       .addText(text => {
         text.inputEl.style.width = '450px';
