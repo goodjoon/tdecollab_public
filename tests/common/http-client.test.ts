@@ -35,9 +35,8 @@ describe('HTTP Client', () => {
 
         await client.get('/test');
         // config에 token만 있으면 Bearer, username+token이면 Basic
-        // 현재 config: { username: 'user', token: 'pass' } → username이 있어도 token 단독 우선(Bearer)이면 Bearer
-        // http-client: token 단독 우선 → Bearer pass
-        expect(capturedAuth).toBe('Bearer pass');
+        // 현재 config: { username: 'user', token: 'pass' } → username이 있으면 Basic 우선
+        expect(capturedAuth).toBe('Basic dXNlcjpwYXNz');
     });
 
     it('should handle 401 Unauthorized', async () => {
