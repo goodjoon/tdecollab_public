@@ -20,7 +20,19 @@ export interface ObsidianImageDownloaderOptions {
   markdownBaseDir: string;
   pageId: string;
   baseUrl: string;
+  downloadBinary?: (url: string) => Promise<Buffer | ArrayBuffer | ArrayBufferView>;
 }
+
+export type RequestUrlLike = (request: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  throw?: boolean;
+}) => Promise<{
+  status: number;
+  headers: Record<string, string>;
+  arrayBuffer: ArrayBuffer;
+}>;
 
 function normalizeVaultPath(value: string): string {
   return value
@@ -71,8 +83,39 @@ export function bufferToExactArrayBuffer(data: Buffer | ArrayBuffer | ArrayBuffe
   return copy.buffer;
 }
 
+export function createRequestUrlBinaryDownloader(
+  requestUrl: RequestUrlLike,
+  headers: Record<string, string>,
+): (url: string) => Promise<ArrayBuffer> {
+  return async (url: string) => {
+    const response = await requestUrl({
+      url,
+      method: 'GET',
+      headers,
+      throw: true,
+    });
+    const arrayBuffer = bufferToExactArrayBuffer(response.arrayBuffer);
+    const contentType = response.headers['content-type'] || response.headers['Content-Type'] || 'unknown';
+    const contentLength = response.headers['content-length'] || response.headers['Content-Length'] || 'unknown';
+
+    console.log(
+      `[tdecollab] requestUrl 이미지 응답: status=${response.status}, bytes=${arrayBuffer.byteLength}, contentType=${contentType}, contentLength=${contentLength}, url=${url}`,
+    );
+
+    return arrayBuffer;
+  };
+}
+
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function resolveDownloadUrl(baseUrl: string, downloadUrl: string): string {
+  if (downloadUrl.startsWith('http')) {
+    return downloadUrl;
+  }
+
+  return `${baseUrl.replace(/\/+$/, '')}/${downloadUrl.replace(/^\/+/, '')}`;
 }
 
 export class ObsidianImageDownloader {
@@ -95,7 +138,7 @@ export class ObsidianImageDownloader {
 
   async downloadImage(ref: ImageReference): Promise<{ key: string; markdownPath: string } | null> {
     try {
-      let buffer: Buffer;
+      let binary: Buffer | ArrayBuffer | ArrayBufferView;
       let filename: string;
 
       if (ref.type === 'attachment' && ref.filename) {
@@ -108,23 +151,26 @@ export class ObsidianImageDownloader {
         }
 
         const downloadUrl = attachment._links.download;
-        const fullUrl = downloadUrl.startsWith('http')
-          ? downloadUrl
-          : `${this.options.baseUrl}${downloadUrl}`;
+        const fullUrl = resolveDownloadUrl(this.options.baseUrl, downloadUrl);
 
-        buffer = await this.api.downloadAttachment(fullUrl);
+        binary = await this.downloadBinary(fullUrl);
         filename = ref.filename;
       } else if (ref.type === 'url' && ref.url) {
         const urlPath = new URL(ref.url).pathname;
         filename = path.posix.basename(urlPath) || 'image.png';
-        buffer = await this.api.downloadAttachment(ref.url);
+        binary = await this.downloadBinary(ref.url);
       } else {
         console.warn(`[tdecollab] 잘못된 이미지 참조입니다: ${JSON.stringify(ref)}`);
         return null;
       }
 
       const outputPath = joinVaultPath(this.options.imageDir, sanitizeFilename(filename));
-      const arrayBuffer = bufferToExactArrayBuffer(buffer);
+      const arrayBuffer = bufferToExactArrayBuffer(binary);
+
+      if (arrayBuffer.byteLength === 0) {
+        console.error(`[tdecollab] 이미지 다운로드 결과가 0 byte라 저장하지 않습니다: ${filename}`);
+        return null;
+      }
 
       console.log(
         `[tdecollab] 이미지 저장: ${outputPath}, bytes=${arrayBuffer.byteLength}, source=${filename}`,
@@ -139,6 +185,14 @@ export class ObsidianImageDownloader {
       console.error(`[tdecollab] 이미지 다운로드 실패: ${error.message}`, error);
       return null;
     }
+  }
+
+  private async downloadBinary(url: string): Promise<Buffer | ArrayBuffer | ArrayBufferView> {
+    if (this.options.downloadBinary) {
+      return this.options.downloadBinary(url);
+    }
+
+    return this.api.downloadAttachment(url);
   }
 
   async downloadAllImages(html: string): Promise<Map<string, string>> {

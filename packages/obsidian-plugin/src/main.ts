@@ -1,4 +1,4 @@
-import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
+import { Plugin, Notice, MarkdownView, TFile, requestUrl } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, TdecollabSettingTab } from './settings.js';
 import { uploadMarkdown, downloadPage } from './api/confluence.js';
 import { extractFrontmatter, updateOrInsertFrontmatter } from './utils/frontmatter.js';
@@ -8,6 +8,7 @@ import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
 import { createConfluenceClient } from '../../../tools/confluence/api/client.js';
 import {
   ObsidianImageDownloader,
+  createRequestUrlBinaryDownloader,
   resolveDocumentFolderPath,
   resolveImageFolderPath,
 } from './utils/image-download.js';
@@ -110,6 +111,10 @@ export default class TdecollabPlugin extends Plugin {
                 markdownBaseDir: documentFolderPath,
                 pageId: pageId,
                 baseUrl: this.settings.baseUrl,
+                downloadBinary: createRequestUrlBinaryDownloader(
+                  requestUrl,
+                  this.createConfluenceAuthHeaders(),
+                ),
               });
 
               new Notice('이미지 다운로드 중...');
@@ -177,6 +182,22 @@ export default class TdecollabPlugin extends Plugin {
         await this.app.vault.createFolder(current);
       }
     }
+  }
+
+  createConfluenceAuthHeaders(): Record<string, string> {
+    if (this.settings.email && this.settings.apiToken) {
+      return {
+        Authorization: `Basic ${Buffer.from(`${this.settings.email}:${this.settings.apiToken}`).toString('base64')}`,
+      };
+    }
+
+    if (this.settings.apiToken) {
+      return {
+        Authorization: `Bearer ${this.settings.apiToken}`,
+      };
+    }
+
+    return {};
   }
 
   async executeUpload(file: TFile, content: string, spaceKey: string, pageId?: string, parentId?: string) {
