@@ -13,6 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 핵심 원칙 (Constitution v2.0.0)
 - **컨텍스트 유지**: 모든 설계 및 결정 사항은 반드시 `tdecollab-docs/`에 문서로 남겨 채팅 세션 간 컨텍스트를 유지한다.
+  - 작업 단위 계획/결정 문서는 `tdecollab-docs/plans/YYYY-MM-DD-SSS-topic.md` 형식으로 작성한다.
+  - `SSS`는 같은 날짜 안에서 수정/작성 순서를 나타내는 3자리 sequence이며 `001`부터 증가시킨다.
 - **코드 품질**: 재사용성, 품질, 가독성을 최우선으로 하며 사람이 이해하기 쉬운 코드를 작성한다.
 - **TDD (Test-Driven Development)**: 모든 기능 구현 시 반드시 테스트 코드를 먼저 또는 함께 작성한다 (`pnpm test`).
 - **시각화 및 문서화**: 문서 작성 시 Mermaid 다이어그램과 표를 활용하여 가독성을 극대화한다.

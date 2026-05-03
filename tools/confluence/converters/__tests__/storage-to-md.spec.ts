@@ -15,6 +15,15 @@ describe('StorageToMarkdownConverter', () => {
         expect(md).toContain('Hello world');
     });
 
+    it('Confluence 이미지 width/height를 Markdown image title로 보존한다', () => {
+        const html =
+            '<ac:image ac:width="320" ac:height="180"><ri:attachment ri:filename="diagram.png" /></ac:image>';
+
+        const md = converter.convert(html);
+
+        expect(md).toContain('![diagram.png](diagram.png "width=320 height=180")');
+    });
+
     it('should convert HTML tables to markdown tables', () => {
         const html = `
             <table>
@@ -30,6 +39,105 @@ describe('StorageToMarkdownConverter', () => {
         expect(md).toContain('| Header 1 | Header 2 |');
         expect(md).toContain('| --- | --- |');
         expect(md).toContain('| Cell 1 | Cell 2 |');
+    });
+
+    it('Confluence의 중첩 bullet list를 Markdown 중첩 list로 보존한다', () => {
+        const html = `
+            <h2>Controller별 Description (안)</h2>
+            <ul>
+                <li><p>WebRTC Wrapper</p>
+                    <ul>
+                        <li><p>역할</p>
+                            <ul>
+                                <li><p>WebRTC와 IMS간 연동을 위한 변환 역할</p>
+                                    <ul>
+                                        <li><p>RTP가 아닌 SRTP 사용</p></li>
+                                        <li><p>연결을 위한 Candidate 명세 사용</p>
+                                            <ul>
+                                                <li><p>Host Candidate</p>
+                                                    <ul>
+                                                        <li><p>동일한 Lan에 있는 경우 Host IP/Port로만 연동 가능</p></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        `;
+
+        const md = converter.convert(html);
+
+        expect(md).toMatch(/^- {1,3}WebRTC Wrapper/m);
+        expect(md).toMatch(/^ {4}- {1,3}역할/m);
+        expect(md).toMatch(/^ {8}- {1,3}WebRTC와 IMS간 연동을 위한 변환 역할/m);
+        expect(md).toMatch(/^ {12}- {1,3}RTP가 아닌 SRTP 사용/m);
+        expect(md).toMatch(/^ {12}- {1,3}연결을 위한 Candidate 명세 사용/m);
+        expect(md).toMatch(/^ {16}- {1,3}Host Candidate/m);
+        expect(md).toMatch(/^ {20}- {1,3}동일한 Lan에 있는 경우 Host IP\/Port로만 연동 가능/m);
+    });
+
+    it('Confluence editor의 flat list indent metadata를 Markdown 중첩 list로 변환한다', () => {
+        const html = `
+            <ul>
+                <li data-indent-level="0">WebRTC Wrapper</li>
+                <li data-indent-level="1">역할</li>
+                <li data-indent-level="2">WebRTC와 IMS간 연동을 위한 변환 역할</li>
+                <li data-indent-level="3">RTP가 아닌 SRTP 사용</li>
+                <li data-indent-level="3">연결을 위한 Candidate 명세 사용</li>
+                <li data-indent-level="4">Host Candidate</li>
+                <li data-indent-level="5">동일한 Lan에 있는 경우 Host IP/Port로만 연동 가능</li>
+            </ul>
+        `;
+
+        const md = converter.convert(html);
+
+        expect(md).toContain('- WebRTC Wrapper');
+        expect(md).toContain('    - 역할');
+        expect(md).toContain('        - WebRTC와 IMS간 연동을 위한 변환 역할');
+        expect(md).toContain('            - RTP가 아닌 SRTP 사용');
+        expect(md).toContain('            - 연결을 위한 Candidate 명세 사용');
+        expect(md).toContain('                - Host Candidate');
+        expect(md).toContain('                    - 동일한 Lan에 있는 경우 Host IP/Port로만 연동 가능');
+    });
+
+    it('Confluence가 li의 sibling으로 저장한 malformed nested list도 중첩 list로 복원한다', () => {
+        const html = `
+            <h2>Controller별 Description (안)</h2>
+            <ul class="ul1">
+                <li class="li1">WebRTC Wrapper</li>
+                <ul class="ul1">
+                    <li class="li2"><span>역할</span></li>
+                    <ul class="ul1">
+                        <li class="li1">WebRTC와 IMS간 연동을 위한 변환 역할</li>
+                        <ul class="ul1">
+                            <li class="li1">RTP가 아닌 SRTP 사용</li>
+                            <li class="li1">연결을 위한 Candidate 명세 사용</li>
+                            <ul class="ul1">
+                                <li class="li1">Host Candidate</li>
+                                <ul class="ul1">
+                                    <li class="li1">동일한 Lan에 있는 경우 Host IP/Port로만 연동 가능</li>
+                                </ul>
+                            </ul>
+                        </ul>
+                    </ul>
+                </ul>
+            </ul>
+        `;
+
+        const md = converter.convert(html);
+
+        expect(md).toMatch(/^- {1,3}WebRTC Wrapper/m);
+        expect(md).toMatch(/^ {4}- {1,3}역할/m);
+        expect(md).toMatch(/^ {8}- {1,3}WebRTC와 IMS간 연동을 위한 변환 역할/m);
+        expect(md).toMatch(/^ {12}- {1,3}RTP가 아닌 SRTP 사용/m);
+        expect(md).toMatch(/^ {12}- {1,3}연결을 위한 Candidate 명세 사용/m);
+        expect(md).toMatch(/^ {16}- {1,3}Host Candidate/m);
+        expect(md).toMatch(/^ {20}- {1,3}동일한 Lan에 있는 경우 Host IP\/Port로만 연동 가능/m);
     });
 
     it('should convert Confluence code macro back to markdown block', () => {

@@ -39,4 +39,47 @@ describe('MarkdownToStorageConverter', () => {
         expect(storage).toContain('graph TD');
         expect(storage).toContain('A --> B');
     });
+
+    it('Markdown image title의 width/height를 Confluence image 속성으로 복원한다', () => {
+        const storage = converter.convert('![diagram](assets/diagram.png "width=320 height=180")');
+
+        expect(storage).toContain('<ac:image ac:alt="diagram" ac:width="320" ac:height="180">');
+        expect(storage).toContain('ri:filename="diagram.png"');
+    });
+
+    it('should strip Obsidian YAML frontmatter before converting to Confluence storage', () => {
+        const md = [
+            '---',
+            'confluence_page_id: 1028470454',
+            '---',
+            '# tdecollab CLI 사용 가이드',
+        ].join('\n');
+
+        const storage = converter.convert(md);
+
+        expect(storage).not.toContain('confluence_page_id');
+        expect(storage).not.toContain('<hr');
+        expect(storage).toContain('<h1>tdecollab CLI 사용 가이드</h1>');
+    });
+
+    it('should strip leaked page id artifacts while preserving normal horizontal rules', () => {
+        const leaked = [
+            '---',
+            '',
+            '## confluence\\_page\\_id: 1028470454',
+            '',
+            '# Title',
+            '',
+            '---',
+            '',
+            'Body',
+        ].join('\n');
+
+        const storage = converter.convert(leaked);
+
+        expect(storage).not.toContain('confluence');
+        expect(storage).toContain('<h1>Title</h1>');
+        expect(storage).toContain('<hr');
+        expect(storage).toContain('<p>Body</p>');
+    });
 });

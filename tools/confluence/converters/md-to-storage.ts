@@ -1,6 +1,64 @@
 import MarkdownIt from 'markdown-it';
 import { loadConfluenceConfig } from '../../common/config.js';
 
+function decodeLocalImagePath(value: string): string {
+    try {
+        return decodeURI(value);
+    } catch {
+        return value;
+    }
+}
+
+function escapeXmlAttribute(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function parseImageDimensionTitle(title: string | null): string {
+    if (!title) {
+        return '';
+    }
+
+    const width = title.match(/\bwidth=(\d+)\b/i)?.[1];
+    const height = title.match(/\bheight=(\d+)\b/i)?.[1];
+    const attrs = [
+        width ? ` ac:width="${escapeXmlAttribute(width)}"` : '',
+        height ? ` ac:height="${escapeXmlAttribute(height)}"` : '',
+    ];
+
+    return attrs.join('');
+}
+
+export function stripMarkdownFrontmatter(markdown: string): string {
+    const frontmatterMatch = markdown.match(/^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
+    if (!frontmatterMatch) {
+        return markdown;
+    }
+
+    return markdown.slice(frontmatterMatch[0].length).replace(/^\r?\n/, '');
+}
+
+export function stripLeakedConfluencePageIdArtifacts(markdown: string): string {
+    let prepared = markdown;
+    const leakedPageIdPattern =
+        /^(?:[ \t]*\r?\n)*(?:---|\*\*\*)[ \t]*\r?\n+(?:[ \t]*\r?\n)*#{1,6}[ \t]+confluence\\?_page\\?_id:[ \t]*\d+[ \t]*\r?\n+/i;
+
+    while (leakedPageIdPattern.test(prepared)) {
+        prepared = prepared.replace(leakedPageIdPattern, '').replace(/^\r?\n/, '');
+    }
+
+    return prepared;
+}
+
+export function prepareMarkdownForConfluenceStorage(markdown: string): string {
+    const withoutLeadingArtifacts = stripLeakedConfluencePageIdArtifacts(markdown);
+    const withoutFrontmatter = stripMarkdownFrontmatter(withoutLeadingArtifacts);
+    return stripLeakedConfluencePageIdArtifacts(withoutFrontmatter);
+}
+
 export class MarkdownToStorageConverter {
     private md: MarkdownIt;
     private mermaidMacroName: string;
@@ -51,18 +109,20 @@ export class MarkdownToStorageConverter {
             const token = tokens[idx];
             const src = token.attrGet('src') || '';
             const alt = token.content || '';
+            const dimensionAttrs = parseImageDimensionTitle(token.attrGet('title'));
 
             // Handle URL vs Local file
             const isExternal = src.startsWith('http://') || src.startsWith('https://');
 
             // 외부 URL이면 URL 매크로, 아니면 첨부파일 매크로
-            const altAttr = alt ? ` ac:alt="${this.md.utils.escapeHtml(alt)}"` : '';
+            const altAttr = alt ? ` ac:alt="${escapeXmlAttribute(alt)}"` : '';
             if (isExternal) {
-                return `<ac:image${altAttr}><ri:url ri:value="${src}" /></ac:image>`;
+                return `<ac:image${altAttr}${dimensionAttrs}><ri:url ri:value="${escapeXmlAttribute(src)}" /></ac:image>`;
             } else {
                 // filename can just be the basename of the src path
-                const filename = src.split('/').pop() || src;
-                return `<ac:image${altAttr}><ri:attachment ri:filename="${filename}" /></ac:image>`;
+                const decodedSrc = decodeLocalImagePath(src);
+                const filename = decodedSrc.split('/').pop() || decodedSrc;
+                return `<ac:image${altAttr}${dimensionAttrs}><ri:attachment ri:filename="${escapeXmlAttribute(filename)}" /></ac:image>`;
             }
         };
 
@@ -77,11 +137,11 @@ export class MarkdownToStorageConverter {
     }
 
     convert(markdown: string): string {
-        return this.md.render(markdown);
+        return this.md.render(prepareMarkdownForConfluenceStorage(markdown));
     }
 
     extractLocalImages(markdown: string): string[] {
-        const tokens = this.md.parse(markdown, {});
+        const tokens = this.md.parse(prepareMarkdownForConfluenceStorage(markdown), {});
         const localImages = new Set<string>();
 
         const walk = (tokens: any[]) => {

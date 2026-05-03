@@ -9,6 +9,7 @@ import { createConfluenceClient } from '../api/client.js';
 import { MarkdownToStorageConverter } from '../converters/md-to-storage.js';
 import { StorageToMarkdownConverter } from '../converters/storage-to-md.js';
 import { tryBuildJiraIssueMap } from '../converters/jira-enricher.js';
+import { normalizeConfluencePageId } from '../utils/page-id.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import { logger } from '../../common/logger.js';
 import chalk from 'chalk';
@@ -32,17 +33,18 @@ export function registerConfluenceCommands(program: Command) {
     // --- Page Commands ---
     const pageCmd = confluenceCmd.command('page').description('페이지 관리');
 
-    pageCmd.command('get <pageId>')
+    pageCmd.command('get <pageIdOrUrl>')
         .description('페이지 조회')
         .option('-r, --raw', 'Raw Storage Format 출력')
         .option('-q, --quiet', '메타데이터 생략')
         .option('-d, --download-images', '이미지 다운로드')
         .option('--image-dir <path>', '이미지 저장 디렉토리', './images')
         .option('-o, --output <file>', 'Markdown을 파일로 저장')
-        .action(async (pageId, options) => {
+        .action(async (pageIdOrUrl, options) => {
             const client = initClient();
             const api = new ConfluenceContentApi(client);
             const config = loadConfluenceConfig();
+            const pageId = normalizeConfluencePageId(pageIdOrUrl);
 
             try {
                 const page = await api.getPage(pageId);

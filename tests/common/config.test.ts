@@ -21,6 +21,17 @@ describe('Config Loader', () => {
 
             const config = loadConfluenceConfig();
             expect(config.baseUrl).toBe('https://confluence.example.com');
+            expect(config.auth.username).toBeUndefined();
+            expect(config.auth.token).toBe('secret-token');
+        });
+
+        it('CONFLUENCE_AUTH_TYPE=basic일 때만 Confluence username을 인증 설정에 포함한다', () => {
+            process.env.CONFLUENCE_BASE_URL = 'https://confluence.example.com';
+            process.env.CONFLUENCE_USERNAME = 'user@example.com';
+            process.env.CONFLUENCE_API_TOKEN = 'secret-token';
+            process.env.CONFLUENCE_AUTH_TYPE = 'basic';
+
+            const config = loadConfluenceConfig();
             expect(config.auth.username).toBe('user@example.com');
             expect(config.auth.token).toBe('secret-token');
         });

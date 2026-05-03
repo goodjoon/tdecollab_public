@@ -14,6 +14,7 @@ import { makeLog } from './state.js';
 import { DEFAULT_ACCENT } from './theme.js';
 import { loadTuiConfig, saveLastUsed, type TuiConfig } from './tuiconfig.js';
 import { appendHistory, loadHistory } from './history.js';
+import { getRuntimeConfigDiagnostics } from '../common/config-diagnostics.js';
 
 // Executor imports
 import { executePageGet, executePageCreate, executeSpaceList, executeSearch, executePageUpdate } from './executor/confluence.js';
@@ -58,7 +59,10 @@ const INITIAL_STATE: AppState = {
   resultList: [],
   resultListCols: [],
   resultListSelected: 0,
-  logs: [makeLog('info', 'session 시작 · tdecollab TUI v0.2.3')],
+  logs: [
+    makeLog('info', 'session 시작 · tdecollab TUI v0.2.3'),
+    ...getRuntimeConfigDiagnostics().map((line) => makeLog('dim', line)),
+  ],
   history: loadHistory(),
   historySelected: 0,
 };

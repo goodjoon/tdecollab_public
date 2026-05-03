@@ -16,6 +16,7 @@ import {
 } from '../menu-def.js';
 import type { AppState } from '../state.js';
 import { T, DEFAULT_ACCENT } from '../theme.js';
+import { getRuntimeConfigDiagnostics } from '../../common/config-diagnostics.js';
 
 interface MenuScreenProps {
   state: AppState;
@@ -153,10 +154,19 @@ export function MenuScreen({
 }
 
 function WelcomeView({ accent }: { accent: string }) {
+  const diagnostics = getRuntimeConfigDiagnostics();
+
   return (
     <Box flexDirection="column" gap={1} paddingY={1}>
       <Text color={accent} bold>tdecollab TUI</Text>
       <Text color={T.fgDim}>좌측 메뉴에서 명령을 선택하세요.</Text>
+      <Box marginTop={1} flexDirection="column" gap={0}>
+        {diagnostics.map((line, index) => (
+          <Text key={index} color={index === 0 ? accent : T.fgDim}>
+            {line}
+          </Text>
+        ))}
+      </Box>
       <Box marginTop={1} flexDirection="column" gap={0}>
         <Text color={T.fgFaint}>  Confluence  ◆ 페이지/스페이스/검색</Text>
         <Text color={T.fgFaint}>  JIRA        ◆ 이슈/검색</Text>

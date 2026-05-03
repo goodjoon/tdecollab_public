@@ -9,6 +9,7 @@
 export interface ParsedConfluenceUrl {
   space?: string;
   pageId?: string;
+  title?: string;
 }
 
 export function parseConfluenceUrl(input: string): ParsedConfluenceUrl {
@@ -18,10 +19,13 @@ export function parseConfluenceUrl(input: string): ParsedConfluenceUrl {
   const result: ParsedConfluenceUrl = {};
 
   // /spaces/<SPACE>/pages/<pageId>
-  const spacesMatch = url.match(/\/spaces\/([^/]+)\/pages\/(\d+)/);
+  const spacesMatch = url.match(/\/spaces\/([^/]+)\/pages\/(\d+)(?:\/([^?#]+))?/);
   if (spacesMatch) {
     result.space = decodeURIComponent(spacesMatch[1]);
     result.pageId = spacesMatch[2];
+    if (spacesMatch[3]) {
+      result.title = decodeConfluenceTitle(spacesMatch[3]);
+    }
     return result;
   }
 
@@ -58,6 +62,9 @@ export function applyUrlFill(
     // 대상 페이지 본인의 URL → pageId, space 채움
     if (parsed.space) result['space'] = parsed.space;
     if (parsed.pageId) result['pageId'] = parsed.pageId;
+    if (commandKey === 'confluence:page:get' && parsed.title) {
+      result['output'] = buildOutputPathWithTitle(current['output'], parsed.title);
+    }
   } else if (commandKey === 'confluence:page:create') {
     // 부모 페이지의 URL → parent, space 채움
     if (parsed.space) result['space'] = parsed.space;
@@ -65,6 +72,27 @@ export function applyUrlFill(
   }
 
   return result;
+}
+
+function decodeConfluenceTitle(value: string): string {
+  return decodeURIComponent(value).replace(/\+/g, ' ');
+}
+
+function sanitizeFilename(value: string): string {
+  return value.replace(/[\\/:*?"<>|]/g, '-').trim() || 'confluence-page';
+}
+
+export function buildOutputPathWithTitle(currentOutput: string | boolean | undefined, title: string): string {
+  const filename = `${sanitizeFilename(title)}.md`;
+  const current = typeof currentOutput === 'string' ? currentOutput.trim() : '';
+
+  if (!current) return filename;
+  if (current.endsWith('/')) return `${current}${filename}`;
+
+  const slashIndex = current.lastIndexOf('/');
+  if (slashIndex < 0) return filename;
+
+  return `${current.slice(0, slashIndex + 1)}${filename}`;
 }
 
 // URL Quick-fill 기능을 지원하는 커맨드 여부
@@ -79,6 +107,7 @@ export function supportsUrlFill(commandKey: string): boolean {
 // 자동 채워질 필드 키 목록 (UI 표시용)
 export function getUrlFillTargets(commandKey: string): string[] {
   if (commandKey === 'confluence:page:create') return ['space', 'parent'];
-  if (commandKey === 'confluence:page:get' || commandKey === 'confluence:page:update') return ['space', 'pageId'];
+  if (commandKey === 'confluence:page:get') return ['space', 'pageId', 'output'];
+  if (commandKey === 'confluence:page:update') return ['space', 'pageId'];
   return [];
 }

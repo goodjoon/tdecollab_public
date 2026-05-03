@@ -20,7 +20,8 @@ function getEnvOrThrow(key: string, description: string): string {
 export function loadConfluenceConfig(): ConfluenceConfig & { mermaidMacroName: string, inlineCodeStyle: string } {
     const baseUrl = getEnvOrThrow('CONFLUENCE_BASE_URL', 'Confluence 기본 URL');
     // PAT 사용 시 username은 불필요 (Basic Auth 사용 시에만 필요)
-    const username = process.env.CONFLUENCE_USERNAME;
+    const authType = (process.env.CONFLUENCE_AUTH_TYPE || 'bearer').toLowerCase();
+    const username = authType === 'basic' ? process.env.CONFLUENCE_USERNAME : undefined;
     const token = getEnvOrThrow('CONFLUENCE_API_TOKEN', 'Confluence PAT 토큰');
     
     // Mermaid 매크로 이름 (기본값: mermaiddiagram)

@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
@@ -16,16 +17,24 @@ let loaded = false;
 export interface LoadEnvResult {
   loadedFiles: string[];
   skippedFiles: string[];
+  sources: Record<string, string>;
 }
+
+let lastResult: LoadEnvResult | null = null;
 
 function getHomeDir(): string {
   return process.env.HOME || process.env.USERPROFILE || os.homedir();
 }
 
 export function loadEnv(): LoadEnvResult {
-  const result: LoadEnvResult = { loadedFiles: [], skippedFiles: [] };
-  if (loaded) return result;
+  if (loaded && lastResult) return lastResult;
+
+  const result: LoadEnvResult = { loadedFiles: [], skippedFiles: [], sources: {} };
   loaded = true;
+
+  for (const key of Object.keys(process.env)) {
+    result.sources[key] = 'shell env';
+  }
 
   const candidates = [
     // 우선순위 2: 현재 디렉토리
@@ -35,16 +44,35 @@ export function loadEnv(): LoadEnvResult {
   ];
 
   for (const filepath of candidates) {
+    let parsed: Record<string, string> = {};
+    try {
+      parsed = dotenv.parse(fs.readFileSync(filepath, 'utf-8'));
+    } catch {
+      // dotenv.config가 skip 여부를 아래에서 결정한다.
+    }
+
+    const beforeKeys = new Set(Object.keys(process.env));
     const out = dotenv.config({ path: filepath, override: false });
     if (out.error) {
       // 파일이 없으면 자연스럽게 skip (오류로 취급하지 않음)
       result.skippedFiles.push(filepath);
     } else {
       result.loadedFiles.push(filepath);
+      for (const key of Object.keys(parsed)) {
+        if (!beforeKeys.has(key) && process.env[key] !== undefined) {
+          result.sources[key] = filepath;
+        }
+      }
     }
   }
 
+  lastResult = result;
   return result;
+}
+
+export function getEnvSource(key: string): string {
+  const result = loadEnv();
+  return result.sources[key] || '<unset>';
 }
 
 // 디버그용 — 어떤 파일이 로드되었는지 확인할 때 사용

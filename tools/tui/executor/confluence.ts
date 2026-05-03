@@ -8,6 +8,7 @@ import { MarkdownToStorageConverter } from '../../confluence/converters/md-to-st
 import { StorageToMarkdownConverter } from '../../confluence/converters/storage-to-md.js';
 import { tryBuildJiraIssueMap } from '../../confluence/converters/jira-enricher.js';
 import { ImageDownloader } from '../../confluence/utils/image-downloader.js';
+import { resolveCurrentVersionForUpdate } from '../../confluence/utils/version.js';
 import { loadConfluenceConfig } from '../../common/config.js';
 import type { StepEntry, LogEntry } from '../state.js';
 import { makeLog } from '../state.js';
@@ -324,7 +325,7 @@ export async function executePageUpdate(
     id: String(values['pageId']),
     title: values['title'] ? String(values['title']) : current.title!,
     body: storageXml,
-    version: (current.version?.number ?? 1) + 1,
+    version: resolveCurrentVersionForUpdate(current.version?.number),
   });
   addLog(makeLog('ok', `업데이트 완료: "${updated.title}" v${updated.version?.number}`));
   steps[3] = { ...steps[3], state: 'done', detail: `v${updated.version?.number}` };

@@ -6,11 +6,12 @@ interface FormFieldProps {
   field: FieldDef;
   value: string | boolean;
   focused: boolean;
+  cursor?: number;
   error?: string;
   accent?: string;
 }
 
-export function FormField({ field, value, focused, error, accent = T.pink }: FormFieldProps) {
+export function FormField({ field, value, focused, cursor, error, accent = T.pink }: FormFieldProps) {
   const labelText = field.label.padEnd(28);
 
   if (field.type === 'bool') {
@@ -68,6 +69,10 @@ export function FormField({ field, value, focused, error, accent = T.pink }: For
   const borderColor = error ? T.red : (focused ? accent : T.border);
   const valStr = String(value ?? '');
   const isPath = !!field.pathType;
+  const cursorIndex = Math.max(0, Math.min(cursor ?? valStr.length, valStr.length));
+  const beforeCursor = valStr.slice(0, cursorIndex);
+  const cursorChar = valStr[cursorIndex];
+  const afterCursor = valStr.slice(cursorIndex + (cursorChar ? 1 : 0));
 
   return (
     <Box flexDirection="column" marginBottom={0}>
@@ -83,12 +88,18 @@ export function FormField({ field, value, focused, error, accent = T.pink }: For
           flexGrow={1}
         >
           {field.prefix && <Text color={T.fgFaint}>{field.prefix} </Text>}
-          {valStr ? (
+          {valStr && focused ? (
+            <>
+              <Text color={T.fg}>{beforeCursor}</Text>
+              <Text backgroundColor={accent} color={T.bg}>{cursorChar || ' '}</Text>
+              <Text color={T.fg}>{afterCursor}</Text>
+            </>
+          ) : valStr ? (
             <Text color={T.fg}>{valStr}</Text>
           ) : (
             <Text color={T.fgFaint}>{field.hint ?? ''}</Text>
           )}
-          {focused && <Text backgroundColor={accent} color={T.bg}> </Text>}
+          {focused && !valStr && <Text backgroundColor={accent} color={T.bg}> </Text>}
         </Box>
       </Box>
       {focused && (
@@ -97,11 +108,11 @@ export function FormField({ field, value, focused, error, accent = T.pink }: For
             <Text color={T.red}>{error}</Text>
           ) : isPath ? (
             <Text color={T.fgFaint}>
-              <Text color={T.amber}>↵</Text> {field.pathType === 'file' ? '파일' : '디렉토리'} 선택창 열기
+              ←/→ 커서 이동 · <Text color={T.amber}>↵</Text> {field.pathType === 'file' ? '파일' : '디렉토리'} 선택창 열기
               {field.hint ? ` · ${field.hint}` : ''}
             </Text>
           ) : field.hint ? (
-            <Text color={T.fgFaint}>{field.hint}</Text>
+            <Text color={T.fgFaint}>←/→ 커서 이동 · {field.hint}</Text>
           ) : null}
         </Box>
       )}

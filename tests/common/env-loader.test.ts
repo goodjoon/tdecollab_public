@@ -21,6 +21,7 @@ describe('Environment Loader', () => {
     process.env = { ...originalEnv, HOME: homeDir };
     delete process.env.CONFLUENCE_BASE_URL;
     delete process.env.CONFLUENCE_API_TOKEN;
+    delete process.env.CONFLUENCE_USERNAME;
     process.chdir(projectDir);
   });
 
@@ -40,6 +41,30 @@ describe('Environment Loader', () => {
     loadEnv();
 
     expect(process.env.CONFLUENCE_BASE_URL).toBe('https://global.example.com');
+  });
+
+  it('설정값이 어느 source에서 로드되었는지 기록한다', async () => {
+    process.env.CONFLUENCE_BASE_URL = 'https://shell.example.com';
+    fs.writeFileSync(
+      path.join(homeDir, '.config', 'tdecollab', '.env'),
+      [
+        'CONFLUENCE_BASE_URL=https://global.example.com',
+        'CONFLUENCE_USERNAME=1111812',
+        'CONFLUENCE_API_TOKEN=global-token',
+      ].join('\n'),
+    );
+
+    const { loadEnv, getEnvSource } = await import('../../tools/common/env-loader.js');
+    const result = loadEnv();
+
+    expect(process.env.CONFLUENCE_BASE_URL).toBe('https://shell.example.com');
+    expect(process.env.CONFLUENCE_USERNAME).toBe('1111812');
+    expect(process.env.CONFLUENCE_API_TOKEN).toBe('global-token');
+    expect(getEnvSource('CONFLUENCE_BASE_URL')).toBe('shell env');
+    expect(getEnvSource('CONFLUENCE_USERNAME')).toBe(
+      path.join(homeDir, '.config', 'tdecollab', '.env'),
+    );
+    expect(result.loadedFiles).toContain(path.join(homeDir, '.config', 'tdecollab', '.env'));
   });
 
   it('현재 디렉토리의 tdecollab.env가 사용자 글로벌 설정보다 우선한다', async () => {

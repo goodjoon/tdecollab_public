@@ -6,12 +6,19 @@ import { UploadModal } from './ui/UploadModal.js';
 import { DownloadModal } from './ui/DownloadModal.js';
 import { ConfluenceContentApi } from '../../../tools/confluence/api/content.js';
 import { createConfluenceClient } from '../../../tools/confluence/api/client.js';
+import { MarkdownToStorageConverter } from '../../../tools/confluence/converters/md-to-storage.js';
 import {
   ObsidianImageDownloader,
   createRequestUrlBinaryDownloader,
   resolveDocumentFolderPath,
   resolveImageFolderPath,
 } from './utils/image-download.js';
+import { uploadLocalImages } from './utils/image-upload.js';
+import {
+  assertNewPageTitleAvailable,
+  buildDuplicatePageTitleMessage,
+  isDuplicatePageTitleApiError,
+} from './utils/page-title.js';
 
 export default class TdecollabPlugin extends Plugin {
   settings!: PluginSettings;
@@ -204,6 +211,14 @@ export default class TdecollabPlugin extends Plugin {
     const title = file.basename;
     try {
       new Notice('Uploading to Confluence...');
+
+      if (pageId) {
+        await this.assertConfluencePageExists(pageId);
+        await this.uploadLocalImageAttachments(file, content, pageId);
+      } else {
+        await this.assertNewPageTitleAvailable(spaceKey, title);
+      }
+
       const res = await uploadMarkdown(
         this.settings.baseUrl,
         this.settings.email,
@@ -214,6 +229,10 @@ export default class TdecollabPlugin extends Plugin {
         pageId,
         parentId
       );
+
+      if (!pageId && res.id) {
+        await this.uploadLocalImageAttachments(file, content, res.id);
+      }
       
       if (!pageId && res.id) {
         const newContent = updateOrInsertFrontmatter(content, 'confluence_page_id', res.id);
@@ -222,7 +241,65 @@ export default class TdecollabPlugin extends Plugin {
       new Notice('업로드 성공!');
     } catch (e: any) {
       console.error(e);
-      new Notice(`업로드 실패: ${e.message}`);
+      const message = !pageId && isDuplicatePageTitleApiError(e)
+        ? buildDuplicatePageTitleMessage(title, spaceKey)
+        : e.message;
+      new Notice(`업로드 실패: ${message}`);
+    }
+  }
+
+  async assertConfluencePageExists(pageId: string) {
+    try {
+      const axiosClient = createConfluenceClient({
+        baseUrl: this.settings.baseUrl,
+        auth: { username: this.settings.email || undefined, token: this.settings.apiToken },
+      });
+      const contentApi = new ConfluenceContentApi(axiosClient);
+      await contentApi.getPage(pageId, ['version']);
+    } catch (error: any) {
+      if (error.name === 'NotFoundError') {
+        throw new Error(
+          `현재 문서의 confluence_page_id(${pageId}) 페이지를 찾을 수 없습니다. 기존 페이지를 업데이트하려면 올바른 page id로 수정하고, 새 페이지로 생성하려면 frontmatter의 confluence_page_id를 제거하세요.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async assertNewPageTitleAvailable(spaceKey: string, title: string) {
+    const axiosClient = createConfluenceClient({
+      baseUrl: this.settings.baseUrl,
+      auth: { username: this.settings.email || undefined, token: this.settings.apiToken },
+    });
+    const contentApi = new ConfluenceContentApi(axiosClient);
+    await assertNewPageTitleAvailable(contentApi, spaceKey, title);
+  }
+
+  async uploadLocalImageAttachments(file: TFile, content: string, pageId: string) {
+    const axiosClient = createConfluenceClient({
+      baseUrl: this.settings.baseUrl,
+      auth: { username: this.settings.email || undefined, token: this.settings.apiToken },
+    });
+    const contentApi = new ConfluenceContentApi(axiosClient);
+    const converter = new MarkdownToStorageConverter();
+    const localImages = converter.extractLocalImages(content);
+
+    if (localImages.length === 0) {
+      return;
+    }
+
+    new Notice(`로컬 이미지 attachment 업로드 중... (${localImages.length}개)`);
+    const uploadedImages = await uploadLocalImages({
+      adapter: this.app.vault.adapter,
+      contentApi,
+      pageId,
+      markdownPath: file.path,
+      imageSources: localImages,
+    });
+    console.log(`[tdecollab] 이미지 attachment 업로드 완료: ${uploadedImages.length}/${localImages.length}개`);
+
+    if (uploadedImages.length !== localImages.length) {
+      throw new Error(`로컬 이미지 attachment 업로드 실패: ${uploadedImages.length}/${localImages.length}개 성공`);
     }
   }
 

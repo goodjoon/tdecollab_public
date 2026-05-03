@@ -8,6 +8,7 @@ import { registerJiraCommands } from './jira/commands/index.js';
 import { registerGitlabCommands } from './gitlab/commands/index.js';
 import { logger } from './common/logger.js';
 import { loadEnv } from './common/env-loader.js';
+import { formatRuntimeConfigDiagnostics } from './common/config-diagnostics.js';
 
 // 환경변수 로드 (우선순위: shell env > ./tdecollab.env > ~/.config/tdecollab/.env)
 loadEnv();
@@ -47,6 +48,13 @@ if (args.length <= 2) {
 }
 
 const program = new Command();
+let diagnosticsPrinted = false;
+
+function printConfigDiagnosticsOnce() {
+    if (diagnosticsPrinted) return;
+    diagnosticsPrinted = true;
+    console.error(formatRuntimeConfigDiagnostics());
+}
 
 program
     .name('tdecollab')
@@ -56,6 +64,7 @@ program
     .option('-d, --debug', '디버그 로그 출력')
     .enablePositionalOptions()
     .hook('preAction', (thisCommand) => {
+        printConfigDiagnosticsOnce();
         const opts = program.opts();
         if (opts.verbose || opts.debug) {
             logger.setLevel('debug');

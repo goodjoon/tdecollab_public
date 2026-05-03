@@ -39,6 +39,15 @@ describe('StorageToMarkdownConverter', () => {
             expect(md).toContain('![test.png](test.png)');
         });
 
+        it('should preserve Confluence image dimensions in markdown image title', () => {
+            const html =
+                '<ac:image ac:width="320" ac:height="180"><ri:attachment ri:filename="diagram.png" /></ac:image>';
+
+            const md = converter.convert(html);
+
+            expect(md).toContain('![diagram.png](diagram.png "width=320 height=180")');
+        });
+
         it('should convert ac:image with URL to markdown', () => {
             const html = '<ac:image><ri:url ri:value="https://example.com/image.png" /></ac:image>';
             const md = converter.convert(html);

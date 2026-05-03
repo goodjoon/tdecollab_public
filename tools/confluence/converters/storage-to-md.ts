@@ -1,6 +1,6 @@
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
-import { JSDOM } from 'jsdom';
+import { createRequire } from 'node:module';
 
 export interface JiraIssueInfo {
     summary: string;
@@ -10,6 +10,48 @@ export interface JiraIssueInfo {
 export interface StorageToMarkdownOptions {
     /** JIRA 티켓 링크 생성에 사용할 베이스 URL (예: https://jira.example.com). 미설정 시 JIRA_BASE_URL 환경변수 사용. */
     jiraBaseUrl?: string;
+}
+
+function parseHtmlDocument(html: string): Document {
+    if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+        const parser = new window.DOMParser();
+        return parser.parseFromString(html, 'text/html');
+    }
+
+    const requireBase = process.argv[1] || `${process.cwd()}/package.json`;
+    const nodeRequire = createRequire(requireBase);
+    const { JSDOM } = nodeRequire('jsdom') as typeof import('jsdom');
+    return new JSDOM(html).window.document;
+}
+
+function getXmlAttribute(attrs: string, name: string): string | undefined {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return attrs.match(new RegExp(`(?:^|\\s)${escapedName}="([^"]*)"`, 'i'))?.[1];
+}
+
+function escapeHtmlAttribute(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeMarkdownImageText(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/]/g, '\\]');
+}
+
+function escapeMarkdownImageDestination(value: string): string {
+    return value.replace(/\)/g, '\\)');
+}
+
+function buildImageDimensionAttributes(attrs: string): string {
+    const width = getXmlAttribute(attrs, 'ac:width') || getXmlAttribute(attrs, 'width');
+    const height = getXmlAttribute(attrs, 'ac:height') || getXmlAttribute(attrs, 'height');
+    return [
+        width ? ` width="${escapeHtmlAttribute(width)}"` : '',
+        height ? ` height="${escapeHtmlAttribute(height)}"` : '',
+    ].join('');
 }
 
 export class StorageToMarkdownConverter {
@@ -32,6 +74,41 @@ export class StorageToMarkdownConverter {
     }
 
     private setupRules() {
+        this.turndown.addRule('imagesWithDimensions', {
+            filter: (node) => {
+                if (node.nodeName.toLowerCase() !== 'img') return false;
+                const element = node as HTMLElement;
+                return element.hasAttribute('width') || element.hasAttribute('height');
+            },
+            replacement: (_content, node) => {
+                const element = node as HTMLElement;
+                const src = element.getAttribute('src') || '';
+                const alt = element.getAttribute('alt') || '';
+                const width = element.getAttribute('width');
+                const height = element.getAttribute('height');
+                const title = [
+                    width ? `width=${width}` : '',
+                    height ? `height=${height}` : '',
+                ].filter(Boolean).join(' ');
+
+                return `![${escapeMarkdownImageText(alt)}](${escapeMarkdownImageDestination(src)} "${title}")`;
+            }
+        });
+
+        this.turndown.addRule('lists', {
+            filter: (node) => {
+                const nodeName = node.nodeName.toLowerCase();
+                if (nodeName !== 'ul' && nodeName !== 'ol') return false;
+                return Array.from((node as HTMLElement).children).some(child => {
+                    return child.nodeName.toLowerCase() === 'li'
+                        && this.getExplicitListItemDepth(child as HTMLElement) !== undefined;
+                });
+            },
+            replacement: (_content, node) => {
+                return this.renderList(node as HTMLElement, 0);
+            }
+        });
+
         // Table 변환 규칙 강화 (정렬 정보 보존)
         this.turndown.addRule('tables', {
             filter: ['table'],
@@ -127,6 +204,114 @@ export class StorageToMarkdownConverter {
         });
     }
 
+    private renderList(listElement: HTMLElement, depth: number): string {
+        const isOrdered = listElement.nodeName.toLowerCase() === 'ol';
+        const start = Number(listElement.getAttribute('start') || '1');
+        let orderedIndex = Number.isFinite(start) && start > 0 ? start : 1;
+
+        const renderedItems = Array.from(listElement.children)
+            .filter((child): child is HTMLElement => child.nodeName.toLowerCase() === 'li')
+            .map((item) => {
+                const itemDepth = this.getListItemDepth(item, depth);
+                const marker = isOrdered ? `${orderedIndex++}.` : '-';
+                const indent = '    '.repeat(itemDepth);
+                const content = this.renderListItemContent(item);
+                const firstLine = `${indent}${marker}${content ? ` ${content.split('\n')[0]}` : ''}`;
+                const remainingLines = content
+                    .split('\n')
+                    .slice(1)
+                    .filter(line => line.trim().length > 0)
+                    .map(line => `${indent}  ${line}`)
+                    .join('\n');
+
+                const nestedLists = Array.from(item.children)
+                    .filter((child): child is HTMLElement => {
+                        const nodeName = child.nodeName.toLowerCase();
+                        return nodeName === 'ul' || nodeName === 'ol';
+                    })
+                    .map(child => this.renderList(child, itemDepth + 1).trim())
+                    .filter(Boolean)
+                    .join('\n');
+
+                return [firstLine, remainingLines, nestedLists].filter(Boolean).join('\n');
+            })
+            .filter(Boolean);
+
+        return `\n\n${renderedItems.join('\n')}\n\n`;
+    }
+
+    private renderListItemContent(item: HTMLElement): string {
+        const clone = item.cloneNode(true) as HTMLElement;
+
+        clone.querySelectorAll('ul, ol').forEach(child => child.remove());
+
+        return this.turndown
+            .turndown(clone.innerHTML)
+            .replace(/\n{2,}/g, '\n')
+            .trim();
+    }
+
+    private getListItemDepth(item: HTMLElement, fallbackDepth: number): number {
+        return this.getExplicitListItemDepth(item) ?? fallbackDepth;
+    }
+
+    private getExplicitListItemDepth(item: HTMLElement): number | undefined {
+        const explicitDepth = item.getAttribute('data-indent-level')
+            || item.getAttribute('data-indent')
+            || item.getAttribute('data-level');
+
+        if (explicitDepth !== null) {
+            const parsedDepth = Number(explicitDepth);
+            if (Number.isFinite(parsedDepth) && parsedDepth >= 0) {
+                return parsedDepth;
+            }
+        }
+
+        const className = item.getAttribute('class') || '';
+        const classDepth = className.match(/(?:^|\s)(?:ql-indent|indent)-(\d+)(?:\s|$)/)?.[1];
+        if (classDepth) {
+            const parsedDepth = Number(classDepth);
+            if (Number.isFinite(parsedDepth) && parsedDepth >= 0) {
+                return parsedDepth;
+            }
+        }
+
+        const style = item.getAttribute('style') || '';
+        const marginLeftPx = style.match(/margin-left:\s*(\d+(?:\.\d+)?)px/i)?.[1];
+        if (marginLeftPx) {
+            const parsedPx = Number(marginLeftPx);
+            if (Number.isFinite(parsedPx) && parsedPx > 0) {
+                return Math.max(0, Math.round(parsedPx / 40));
+            }
+        }
+
+        return undefined;
+    }
+
+    private normalizeMalformedConfluenceLists(document: Document): void {
+        let changed = true;
+
+        while (changed) {
+            changed = false;
+            const lists = Array.from(document.querySelectorAll('ul, ol'));
+
+            for (const list of lists) {
+                const childLists = Array.from(list.children).filter((child): child is HTMLElement => {
+                    const nodeName = child.nodeName.toLowerCase();
+                    return nodeName === 'ul' || nodeName === 'ol';
+                });
+
+                for (const childList of childLists) {
+                    const previous = childList.previousElementSibling;
+                    if (previous?.nodeName.toLowerCase() === 'li') {
+                        previous.appendChild(childList);
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+
     convert(storageHtml: string, imageUrlMap?: Map<string, string>, jiraIssueMap?: Map<string, JiraIssueInfo>): string {
         this.jiraIssueMap = jiraIssueMap;
         if (!storageHtml) return '';
@@ -148,25 +333,20 @@ export class StorageToMarkdownConverter {
             .replace(/<ac:image([^>]*)>[\s\S]*?<ri:attachment\s+ri:filename="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, filename) => {
                 const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
                 const alt = altMatch ? altMatch[1] : filename;
-                return `<img src="${filename}" alt="${alt}" />`;
+                const dimensions = buildImageDimensionAttributes(attrs);
+                return `<img src="${escapeHtmlAttribute(filename)}" alt="${escapeHtmlAttribute(alt)}"${dimensions} />`;
             })
             .replace(/<ac:image([^>]*)>[\s\S]*?<ri:url\s+ri:value="([^"]*)"\s*\/?>[\s\S]*?<\/ac:image>/gi, (match, attrs, url) => {
                 const altMatch = attrs.match(/ac:alt="([^"]*)"/i);
                 const alt = altMatch ? altMatch[1] : '';
-                return `<img src="${url}" alt="${alt}" />`;
+                const dimensions = buildImageDimensionAttributes(attrs);
+                return `<img src="${escapeHtmlAttribute(url)}" alt="${escapeHtmlAttribute(alt)}"${dimensions} />`;
             });
 
         // 2. DOM 파싱 (Browser/Node 분기)
-        let document: Document;
-        if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
-            const parser = new window.DOMParser();
-            document = parser.parseFromString(processedHtml, 'text/html');
-        } else {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const { JSDOM } = require('jsdom');
-            const dom = new JSDOM(processedHtml);
-            document = dom.window.document;
-        }
+        const document = parseHtmlDocument(processedHtml);
+
+        this.normalizeMalformedConfluenceLists(document);
 
         // 이미지 처리
         if (imageUrlMap && imageUrlMap.size > 0) {

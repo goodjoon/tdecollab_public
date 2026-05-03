@@ -46,10 +46,26 @@ flowchart TD
 | 저장 전 검증 | `ArrayBuffer.byteLength === 0`이면 파일을 쓰지 않고 console error 출력 |
 | 진단 로그 | status, bytes, content-type, content-length, 저장 경로를 console에 출력 |
 
+## 2026-05-03 업로드 attachment 조사
+
+Confluence 업로드 후 페이지에서 `Unknown Attachment`가 표시되는 문제가 확인되었다. 원인은 Obsidian plugin의 upload 경로가 Markdown 본문을 `<ri:attachment ri:filename="...">`로 변환하지만, CLI와 달리 로컬 이미지 파일을 Confluence attachment로 업로드하지 않았기 때문이다.
+
+수정 원칙:
+
+| 경계 | 변경 |
+|---|---|
+| Markdown image source | 현재 노트 파일의 디렉토리를 기준으로 vault 내부 이미지 경로 resolve |
+| Vault file read | `DataAdapter.readBinary`로 이미지 파일을 읽고 `Buffer`로 변환 |
+| Attachment upload | `ConfluenceContentApi.uploadAttachment(pageId, filename, buffer, contentType)` 호출 |
+| 기존 페이지 update | body update 전에 attachment를 먼저 upsert |
+| 신규 페이지 create | page id 생성 후 attachment 업로드 |
+| 진단 로그 | pageId, filename, vaultPath, bytes, contentType 출력 |
+
 ## 검증
 
 | 검증 항목 | 명령 |
 |---|---|
 | Obsidian image helper 단위 테스트 | `pnpm --dir packages/obsidian-plugin test -- --run tests/image-download.test.ts` |
+| Obsidian image upload helper 단위 테스트 | `pnpm --dir packages/obsidian-plugin test -- --run tests/image-upload.test.ts` |
 | Obsidian plugin production build | `pnpm --dir packages/obsidian-plugin build` |
 | 기존 CLI/shared downloader 회귀 테스트 | `pnpm test:run tests/confluence/utils/image-downloader.test.ts` |

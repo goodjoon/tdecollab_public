@@ -13,6 +13,7 @@ import { MENU, META_ITEMS, flattenMenu, pathFromCommandKey, type MenuItem } from
 import type { AppState } from '../state.js';
 import { T, DEFAULT_ACCENT } from '../theme.js';
 import { applyUrlFill, getUrlFillTargets, parseConfluenceUrl, supportsUrlFill } from '../url-parser.js';
+import { applyTextEdit, clampCursor } from '../text-edit.js';
 
 interface FormScreenProps {
   state: AppState;
@@ -33,6 +34,7 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
   const [focusIdx, setFocusIdx] = useState(state.focusedField);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [urlValue, setUrlValue] = useState('');
+  const [cursorByField, setCursorByField] = useState<Record<string, number>>({});
 
   if (!def) return <Text color={T.red}>커맨드를 찾을 수 없습니다: {state.commandKey}</Text>;
 
@@ -43,12 +45,21 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
   const currentField: FieldDef | undefined = onUrlField ? undefined : fields[focusIdx];
   const preview = buildPreview(def, values);
 
+  function getFieldCursor(fieldKey: string, fieldValue: string | boolean | undefined): number {
+    const value = String(fieldValue ?? '');
+    return clampCursor(cursorByField[fieldKey] ?? value.length, value);
+  }
+
   // URL 변경 시 자동으로 관련 필드 채우기
   function updateUrl(next: string) {
     setUrlValue(next);
     const parsed = parseConfluenceUrl(next);
     if (parsed.space || parsed.pageId) {
-      setValues((v) => applyUrlFill(state.commandKey, parsed, v));
+      const filled = applyUrlFill(state.commandKey, parsed, values);
+      setValues(filled);
+      if (typeof filled.output === 'string') {
+        setCursorByField((c) => ({ ...c, output: String(filled.output).length }));
+      }
       setErrors({});
     }
   }
@@ -131,6 +142,18 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
       return;
     }
 
+    if (currentField?.type === 'text' && (key.leftArrow || key.rightArrow)) {
+      const keyName = currentField.key;
+      const value = String(values[keyName] ?? '');
+      const cursor = getFieldCursor(keyName, value);
+      const next = applyTextEdit(
+        { value, cursor },
+        { type: key.leftArrow ? 'moveLeft' : 'moveRight' },
+      );
+      setCursorByField((c) => ({ ...c, [keyName]: next.cursor }));
+      return;
+    }
+
     // === URL Quick-fill 필드 처리 ===
     if (onUrlField) {
       if (key.backspace || key.delete) {
@@ -178,20 +201,27 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
 
     // 직접 타이핑: 백스페이스
     if (key.backspace || key.delete) {
-      setValues((v) => ({
-        ...v,
-        [currentField.key]: String(v[currentField.key] ?? '').slice(0, -1),
-      }));
+      const keyName = currentField.key;
+      const value = String(values[keyName] ?? '');
+      const cursor = getFieldCursor(keyName, value);
+      const next = applyTextEdit(
+        { value, cursor },
+        { type: key.backspace ? 'backspace' : 'delete' },
+      );
+      setValues((v) => ({ ...v, [keyName]: next.value }));
+      setCursorByField((c) => ({ ...c, [keyName]: next.cursor }));
       setErrors((e) => { const n = { ...e }; delete n[currentField.key]; return n; });
       return;
     }
 
     // 일반 문자 입력 (제어키 제외)
     if (input && !key.ctrl && !key.meta) {
-      setValues((v) => ({
-        ...v,
-        [currentField.key]: String(v[currentField.key] ?? '') + input,
-      }));
+      const keyName = currentField.key;
+      const value = String(values[keyName] ?? '');
+      const cursor = getFieldCursor(keyName, value);
+      const next = applyTextEdit({ value, cursor }, { type: 'insert', text: input });
+      setValues((v) => ({ ...v, [keyName]: next.value }));
+      setCursorByField((c) => ({ ...c, [keyName]: next.cursor }));
       setErrors((e) => { const n = { ...e }; delete n[currentField.key]; return n; });
     }
   });
@@ -238,6 +268,7 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
               accent={accent}
               onSelect={(selected) => {
                 setValues((v) => ({ ...v, [currentField.key]: selected }));
+                setCursorByField((c) => ({ ...c, [currentField.key]: selected.length }));
                 setErrors((e) => { const n = { ...e }; delete n[currentField.key]; return n; });
                 setPickerOpen(false);
               }}
@@ -295,6 +326,7 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
                   field={f}
                   value={values[f.key] ?? ''}
                   focused={i === focusIdx}
+                  cursor={getFieldCursor(f.key, values[f.key])}
                   error={errors[f.key]}
                   accent={accent}
                 />
@@ -340,6 +372,7 @@ export function FormScreen({ state, onRun, onBack, onSavePreset, accent = DEFAUL
           <Keymap accent={accent} keys={[
             { key: 'Tab', label: 'next field' },
             { key: '⇧Tab', label: 'prev' },
+            { key: '←/→', label: 'cursor' },
             { key: 'A-Z', label: '바로 입력' },
             { key: '↵', label: currentField?.pathType ? '경로 선택창' : currentField?.type === 'bool' ? 'toggle' : '—' },
             { key: 'Ctrl+R', label: 'Run' },
