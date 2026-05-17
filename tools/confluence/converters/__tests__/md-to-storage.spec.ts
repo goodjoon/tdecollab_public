@@ -1,17 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MarkdownToStorageConverter } from '../md-to-storage.js';
 
-// mock config
-vi.mock('../../common/config.js', () => ({
-    loadConfluenceConfig: () => ({
-        mermaidMacroName: 'mermaiddiagram'
-    })
-}));
-
 describe('MarkdownToStorageConverter', () => {
     let converter: MarkdownToStorageConverter;
 
     beforeEach(() => {
+        vi.stubEnv('CONFLUENCE_BASE_URL', 'https://confluence.example.com');
+        vi.stubEnv('CONFLUENCE_API_TOKEN', 'test-token');
         converter = new MarkdownToStorageConverter();
     });
 
@@ -33,11 +28,43 @@ describe('MarkdownToStorageConverter', () => {
     it('should convert mermaid blocks to Confluence mermaid macro', () => {
         const md = '```mermaid\ngraph TD\nA --> B\n```';
         const storage = converter.convert(md);
-        // 매크로 이름은 config에 따라 다름 (mock: mermaiddiagram, 기본값: mermaid-macro)
+        // 매크로 이름은 runtime config에 따라 달라질 수 있다.
         expect(storage).toMatch(/ac:name="mermaid(diagram|-macro|)"/);
         expect(storage).not.toContain('ac:name="language"');
         expect(storage).toContain('graph TD');
         expect(storage).toContain('A --> B');
+    });
+
+    it('should convert markdown task list markers to Confluence task list storage', () => {
+        const storage = converter.convert(['- [ ] 할 일', '- [x] 완료'].join('\n'));
+
+        expect(storage).toContain('<ac:task-list>');
+        expect(storage).toContain('<ac:task-status>incomplete</ac:task-status>');
+        expect(storage).toContain('<ac:task-body>할 일</ac:task-body>');
+        expect(storage).toContain('<ac:task-status>complete</ac:task-status>');
+        expect(storage).toContain('<ac:task-body>완료</ac:task-body>');
+        expect(storage).not.toContain('[ ]');
+        expect(storage).not.toContain('[x]');
+    });
+
+    it('should keep normal bullets when markdown task items are mixed with regular list items', () => {
+        const storage = converter.convert(['- 일반 항목', '- [ ] 체크 항목', '- 다음 항목'].join('\n'));
+
+        expect(storage).toContain('<li>일반 항목</li>');
+        expect(storage).toContain('<ac:task-body>체크 항목</ac:task-body>');
+        expect(storage).toContain('<li>다음 항목</li>');
+        expect(storage).not.toContain('<li>[ ] 체크 항목</li>');
+    });
+
+    it('should close task body before rendering nested bullet items under a markdown task', () => {
+        const storage = converter.convert(
+            ['- 일반 항목', '- [x] 체크 항목', '  - 하위 항목', '- 다음 항목'].join('\n'),
+        );
+
+        expect(storage).toContain('<ac:task-body>체크 항목</ac:task-body></ac:task></ac:task-list>');
+        expect(storage).toContain('<li>하위 항목</li>');
+        expect(storage).toContain('<li>다음 항목</li>');
+        expect(storage).not.toContain('<ac:task-body>체크 항목\n<ul>');
     });
 
     it('Markdown image title의 width/height를 Confluence image 속성으로 복원한다', () => {
@@ -45,6 +72,17 @@ describe('MarkdownToStorageConverter', () => {
 
         expect(storage).toContain('<ac:image ac:alt="diagram" ac:width="320" ac:height="180">');
         expect(storage).toContain('ri:filename="diagram.png"');
+    });
+
+    it('should not require environment config when converter options are provided', () => {
+        vi.unstubAllEnvs();
+
+        const optionConverter = new MarkdownToStorageConverter({
+            baseUrl: 'https://confluence.example.com',
+        });
+        const storage = optionConverter.convert('```mermaid\ngraph TD\nA --> B\n```');
+
+        expect(storage).toContain('ac:name="mermaiddiagram"');
     });
 
     it('should strip Obsidian YAML frontmatter before converting to Confluence storage', () => {

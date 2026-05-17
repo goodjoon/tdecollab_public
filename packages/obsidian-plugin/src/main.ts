@@ -281,7 +281,7 @@ export default class TdecollabPlugin extends Plugin {
       auth: { username: this.settings.email || undefined, token: this.settings.apiToken },
     });
     const contentApi = new ConfluenceContentApi(axiosClient);
-    const converter = new MarkdownToStorageConverter();
+    const converter = new MarkdownToStorageConverter({ baseUrl: this.settings.baseUrl });
     const localImages = converter.extractLocalImages(content);
 
     if (localImages.length === 0) {

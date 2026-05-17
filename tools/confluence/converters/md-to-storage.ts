@@ -1,6 +1,16 @@
 import MarkdownIt from 'markdown-it';
 import { loadConfluenceConfig } from '../../common/config.js';
 
+const DEFAULT_MERMAID_MACRO_NAME = 'mermaiddiagram';
+const DEFAULT_INLINE_CODE_STYLE = 'color: #d04437; font-weight: bold;';
+const TASK_ITEM_PATTERN = /^\[([ xX])\]\s+/;
+
+export interface MarkdownToStorageConverterOptions {
+    baseUrl?: string;
+    mermaidMacroName?: string;
+    inlineCodeStyle?: string;
+}
+
 function decodeLocalImagePath(value: string): string {
     try {
         return decodeURI(value);
@@ -30,6 +40,164 @@ function parseImageDimensionTitle(title: string | null): string {
     ];
 
     return attrs.join('');
+}
+
+function getTaskMarker(content: string): { checked: boolean; body: string } | null {
+    const match = content.match(TASK_ITEM_PATTERN);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        checked: match[1].toLowerCase() === 'x',
+        body: content.slice(match[0].length),
+    };
+}
+
+function findMatchingCloseIndex(tokens: any[], openIndex: number): number {
+    const openToken = tokens[openIndex];
+    let nesting = 1;
+
+    for (let idx = openIndex + 1; idx < tokens.length; idx++) {
+        const token = tokens[idx];
+        if (token.type === openToken.type) {
+            nesting++;
+        }
+        if (token.type === openToken.type.replace('_open', '_close')) {
+            nesting--;
+            if (nesting === 0) {
+                return idx;
+            }
+        }
+    }
+
+    return openIndex;
+}
+
+function annotateTaskListTokens(tokens: any[]): void {
+    const listItemStack: number[] = [];
+
+    for (let idx = 0; idx < tokens.length; idx++) {
+        const token = tokens[idx];
+
+        if (token.type === 'list_item_open') {
+            listItemStack.push(idx);
+            continue;
+        }
+
+        if (token.type === 'list_item_close') {
+            listItemStack.pop();
+            continue;
+        }
+
+        if (token.type !== 'inline' || listItemStack.length === 0) {
+            continue;
+        }
+
+        const task = getTaskMarker(token.content);
+        if (!task) {
+            continue;
+        }
+
+        const listItemOpenIndex = listItemStack[listItemStack.length - 1];
+        if (tokens[listItemOpenIndex].meta?.task) {
+            continue;
+        }
+
+        token.content = task.body;
+        if (token.children?.[0]?.type === 'text') {
+            token.children[0].content = token.children[0].content.replace(TASK_ITEM_PATTERN, '');
+        }
+
+        tokens[listItemOpenIndex].meta = {
+            ...(tokens[listItemOpenIndex].meta || {}),
+            task,
+        };
+
+        if (tokens[idx - 1]?.type === 'paragraph_open') {
+            tokens[idx - 1].meta = {
+                ...(tokens[idx - 1].meta || {}),
+                taskBodyParagraph: true,
+            };
+        }
+        if (tokens[idx + 1]?.type === 'paragraph_close') {
+            tokens[idx + 1].meta = {
+                ...(tokens[idx + 1].meta || {}),
+                taskBodyParagraph: true,
+            };
+        }
+    }
+
+    annotateTaskListBoundaries(tokens);
+    annotateTaskListCloseTokens(tokens);
+}
+
+function annotateTaskListBoundaries(tokens: any[]): void {
+    for (let idx = 0; idx < tokens.length; idx++) {
+        const token = tokens[idx];
+        if (token.type !== 'bullet_list_open') {
+            continue;
+        }
+
+        const closeIndex = findMatchingCloseIndex(tokens, idx);
+        const directItemIndexes: number[] = [];
+
+        for (let cursor = idx + 1; cursor < closeIndex; cursor++) {
+            if (tokens[cursor].type === 'list_item_open' && tokens[cursor].level === token.level + 1) {
+                directItemIndexes.push(cursor);
+            }
+        }
+
+        if (directItemIndexes.length === 0) {
+            continue;
+        }
+
+        const itemKinds = directItemIndexes.map((itemIndex) => !!tokens[itemIndex].meta?.task);
+        const firstIsNormal = !itemKinds[0];
+        const lastIsNormal = !itemKinds[itemKinds.length - 1];
+
+        token.meta = { ...(token.meta || {}), renderList: firstIsNormal };
+        tokens[closeIndex].meta = { ...(tokens[closeIndex].meta || {}), renderList: lastIsNormal };
+
+        directItemIndexes.forEach((itemIndex, itemPosition) => {
+            const itemToken = tokens[itemIndex];
+            if (!itemToken.meta?.task) {
+                return;
+            }
+
+            itemToken.meta.taskCloseParentBefore = itemPosition > 0 && !itemKinds[itemPosition - 1];
+            itemToken.meta.taskOpenParentAfter =
+                itemPosition < itemKinds.length - 1 && !itemKinds[itemPosition + 1];
+        });
+    }
+}
+
+function annotateTaskListCloseTokens(tokens: any[]): void {
+    const listItemStack: number[] = [];
+
+    for (let idx = 0; idx < tokens.length; idx++) {
+        const token = tokens[idx];
+
+        if (token.type === 'list_item_open') {
+            listItemStack.push(idx);
+            continue;
+        }
+
+        if (token.type !== 'list_item_close') {
+            continue;
+        }
+
+        const openIndex = listItemStack.pop();
+        if (openIndex === undefined || !tokens[openIndex].meta?.task) {
+            continue;
+        }
+
+        token.meta = {
+            ...(token.meta || {}),
+            task: tokens[openIndex].meta.task,
+            taskOpenParentAfter: tokens[openIndex].meta.taskOpenParentAfter,
+        };
+    }
 }
 
 export function stripMarkdownFrontmatter(markdown: string): string {
@@ -64,10 +232,15 @@ export class MarkdownToStorageConverter {
     private mermaidMacroName: string;
     private inlineCodeStyle: string;
 
-    constructor() {
-        const config = loadConfluenceConfig();
-        this.mermaidMacroName = config.mermaidMacroName;
-        this.inlineCodeStyle = config.inlineCodeStyle;
+    constructor(options?: MarkdownToStorageConverterOptions) {
+        if (options) {
+            this.mermaidMacroName = options.mermaidMacroName || DEFAULT_MERMAID_MACRO_NAME;
+            this.inlineCodeStyle = options.inlineCodeStyle || DEFAULT_INLINE_CODE_STYLE;
+        } else {
+            const config = loadConfluenceConfig();
+            this.mermaidMacroName = config.mermaidMacroName;
+            this.inlineCodeStyle = config.inlineCodeStyle;
+        }
 
         this.md = new MarkdownIt({
             html: true,
@@ -75,6 +248,59 @@ export class MarkdownToStorageConverter {
             breaks: true,
             xhtmlOut: true // Confluence XML 파서와의 호환성을 위해 XHTML 출력 활성화
         });
+
+        this.md.core.ruler.after('inline', 'confluence_task_list', (state) => {
+            annotateTaskListTokens(state.tokens);
+        });
+
+        this.md.renderer.rules.bullet_list_open = (tokens, idx, options, env, self) => {
+            if (tokens[idx].meta?.renderList === false) {
+                return '';
+            }
+            return self.renderToken(tokens, idx, options);
+        };
+
+        this.md.renderer.rules.bullet_list_close = (tokens, idx, options, env, self) => {
+            if (tokens[idx].meta?.renderList === false) {
+                return '';
+            }
+            return self.renderToken(tokens, idx, options);
+        };
+
+        this.md.renderer.rules.list_item_open = (tokens, idx, options, env, self) => {
+            const task = tokens[idx].meta?.task;
+            if (!task) {
+                return self.renderToken(tokens, idx, options);
+            }
+
+            const prefix = tokens[idx].meta.taskCloseParentBefore ? '</ul>\n' : '';
+            const status = task.checked ? 'complete' : 'incomplete';
+            return `${prefix}<ac:task-list><ac:task><ac:task-status>${status}</ac:task-status><ac:task-body>`;
+        };
+
+        this.md.renderer.rules.list_item_close = (tokens, idx, options, env, self) => {
+            if (!tokens[idx].meta?.task) {
+                return self.renderToken(tokens, idx, options);
+            }
+
+            const suffix = tokens[idx].meta.taskOpenParentAfter ? '\n<ul>' : '';
+            return suffix;
+        };
+
+        this.md.renderer.rules.paragraph_open = (tokens, idx, options, env, self) => {
+            if (tokens[idx].meta?.taskBodyParagraph) {
+                return '';
+            }
+            return self.renderToken(tokens, idx, options);
+        };
+
+        this.md.renderer.rules.paragraph_close = (tokens, idx, options, env, self) => {
+            const task = tokens[idx].meta?.taskBodyParagraph;
+            if (task) {
+                return '</ac:task-body></ac:task></ac:task-list>';
+            }
+            return self.renderToken(tokens, idx, options);
+        };
 
         // Custom renderer for code blocks
         this.md.renderer.rules.fence = (tokens, idx) => {
@@ -132,8 +358,6 @@ export class MarkdownToStorageConverter {
             const content = this.md.utils.escapeHtml(token.content);
             return `<code style="${this.inlineCodeStyle}">${content}</code>`;
         };
-
-        // Task List 처리 (markdown-it 플러그인 없이 수동 처리 예시 - 실제로는 플러그인 도입 권장)
     }
 
     convert(markdown: string): string {

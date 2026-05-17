@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { MarkdownToStorageConverter } from '../../../tools/confluence/converters/md-to-storage.js';
 
 describe('MarkdownToStorageConverter', () => {
-    const converter = new MarkdownToStorageConverter();
+    const converter = new MarkdownToStorageConverter({
+        baseUrl: 'https://confluence.example.com',
+    });
 
     it('should convert basic markdown to HTML', () => {
         const md = '# Hello\n\nWorld';

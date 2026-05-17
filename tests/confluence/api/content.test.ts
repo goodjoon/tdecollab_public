@@ -46,7 +46,7 @@ describe('ConfluenceContentApi', () => {
         expect(result).toEqual(mockResponse);
         // Verify label call
         expect(mock.history.post.length).toBe(2);
-        expect(mock.history.post[1].url).toBe('/rest/api/content/456/label');
+        expect(mock.history.post[1].url).toBe('rest/api/content/456/label');
     });
 
     describe('Attachment methods', () => {

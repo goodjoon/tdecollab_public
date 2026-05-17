@@ -1,6 +1,6 @@
 {
   "name": "obsidian-tdecollab",
-  "version": "1.0.0",
+  "version": "1.0.16",
   "description": "Obsidian Plugin for Confluence Sync",
   "main": "main.js",
   "scripts": {
