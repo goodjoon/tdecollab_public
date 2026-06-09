@@ -1,13 +1,13 @@
 import MarkdownIt from 'markdown-it';
 import { loadConfluenceConfig } from '../../common/config.js';
 
-const DEFAULT_MERMAID_MACRO_NAME = 'mermaiddiagram';
+// Mermaid 렌더링에 사용하는 Confluence 매크로 이름 (TDE Confluence 기준 고정값)
+const MERMAID_MACRO_NAME = 'mermaid-macro';
 const DEFAULT_INLINE_CODE_STYLE = 'color: #d04437; font-weight: bold;';
 const TASK_ITEM_PATTERN = /^\[([ xX])\]\s+/;
 
 export interface MarkdownToStorageConverterOptions {
     baseUrl?: string;
-    mermaidMacroName?: string;
     inlineCodeStyle?: string;
 }
 
@@ -229,16 +229,13 @@ export function prepareMarkdownForConfluenceStorage(markdown: string): string {
 
 export class MarkdownToStorageConverter {
     private md: MarkdownIt;
-    private mermaidMacroName: string;
     private inlineCodeStyle: string;
 
     constructor(options?: MarkdownToStorageConverterOptions) {
         if (options) {
-            this.mermaidMacroName = options.mermaidMacroName || DEFAULT_MERMAID_MACRO_NAME;
             this.inlineCodeStyle = options.inlineCodeStyle || DEFAULT_INLINE_CODE_STYLE;
         } else {
             const config = loadConfluenceConfig();
-            this.mermaidMacroName = config.mermaidMacroName;
             this.inlineCodeStyle = config.inlineCodeStyle;
         }
 
@@ -310,7 +307,7 @@ export class MarkdownToStorageConverter {
 
             // Mermaid 처리 (기존 로직 유지)
             if (lang === 'mermaid') {
-                return `<ac:structured-macro ac:name="${this.mermaidMacroName}" ac:schema-version="1">
+                return `<ac:structured-macro ac:name="${MERMAID_MACRO_NAME}" ac:schema-version="1">
   <ac:plain-text-body><![CDATA[${code}]]></ac:plain-text-body>
 </ac:structured-macro>`;
             }

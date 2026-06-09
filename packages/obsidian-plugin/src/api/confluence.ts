@@ -9,7 +9,7 @@ export async function uploadMarkdown(
   token: string, 
   spaceKey: string,
   title: string,
-  markdown: string, 
+  markdown: string,
   pageId?: string,
   parentId?: string
 ) {

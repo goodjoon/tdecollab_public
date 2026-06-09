@@ -28,8 +28,8 @@ describe('MarkdownToStorageConverter', () => {
     it('should convert mermaid blocks to Confluence mermaid macro', () => {
         const md = '```mermaid\ngraph TD\nA --> B\n```';
         const storage = converter.convert(md);
-        // 매크로 이름은 runtime config에 따라 달라질 수 있다.
-        expect(storage).toMatch(/ac:name="mermaid(diagram|-macro|)"/);
+        // 매크로 이름은 TDE Confluence 기준 'mermaid-macro'로 고정한다.
+        expect(storage).toContain('ac:name="mermaid-macro"');
         expect(storage).not.toContain('ac:name="language"');
         expect(storage).toContain('graph TD');
         expect(storage).toContain('A --> B');
@@ -82,7 +82,7 @@ describe('MarkdownToStorageConverter', () => {
         });
         const storage = optionConverter.convert('```mermaid\ngraph TD\nA --> B\n```');
 
-        expect(storage).toContain('ac:name="mermaiddiagram"');
+        expect(storage).toContain('ac:name="mermaid-macro"');
     });
 
     it('should strip Obsidian YAML frontmatter before converting to Confluence storage', () => {

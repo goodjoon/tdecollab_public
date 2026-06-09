@@ -53,7 +53,6 @@ pnpm test:run tools/confluence/converters/__tests__/storage-to-md.spec.ts
 | `CONFLUENCE_BASE_URL` | Confluence 서버 URL |
 | `CONFLUENCE_API_TOKEN` | PAT 토큰 (Bearer 인증) |
 | `CONFLUENCE_USERNAME` | Basic Auth 시만 필요 (PAT 사용 시 생략) |
-| `CONFLUENCE_MERMAID_MACRO_NAME` | Mermaid 매크로명 (기본: `mermaiddiagram`) |
 | `JIRA_BASE_URL` | JIRA 서버 URL |
 | `JIRA_API_TOKEN` | PAT 토큰 |
 | `GITLAB_BASE_URL` | GitLab 서버 URL |
