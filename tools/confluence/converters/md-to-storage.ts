@@ -5,6 +5,7 @@ import { loadConfluenceConfig } from '../../common/config.js';
 const MERMAID_MACRO_NAME = 'mermaid-macro';
 const DEFAULT_INLINE_CODE_STYLE = 'color: #d04437; font-weight: bold;';
 const TASK_ITEM_PATTERN = /^\[([ xX])\]\s+/;
+const RAW_HTML_LITERAL_OR_BREAK_PATTERN = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<br\s*\/?>/gi;
 
 export interface MarkdownToStorageConverterOptions {
     baseUrl?: string;
@@ -25,6 +26,18 @@ function escapeXmlAttribute(value: string): string {
         .replace(/"/g, '&quot;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+}
+
+/**
+ * raw HTML 줄바꿈 tag를 Confluence Storage XML 형식으로 정규화한다.
+ *
+ * @param rawHtml markdown-it이 분리한 raw HTML token
+ */
+function normalizeRawHtmlBreaksForConfluenceStorage(rawHtml: string): string {
+    return rawHtml.replace(RAW_HTML_LITERAL_OR_BREAK_PATTERN, (segment) => {
+        // comment와 CDATA의 literal은 보존하고 실제 줄바꿈 tag만 정규화한다.
+        return /^<br\s*\/?>$/i.test(segment) ? '<br />' : segment;
+    });
 }
 
 function parseImageDimensionTitle(title: string | null): string {
@@ -245,6 +258,14 @@ export class MarkdownToStorageConverter {
             breaks: true,
             xhtmlOut: true // Confluence XML 파서와의 호환성을 위해 XHTML 출력 활성화
         });
+
+        this.md.renderer.rules.html_inline = (tokens, idx) => {
+            return normalizeRawHtmlBreaksForConfluenceStorage(tokens[idx].content);
+        };
+
+        this.md.renderer.rules.html_block = (tokens, idx) => {
+            return normalizeRawHtmlBreaksForConfluenceStorage(tokens[idx].content);
+        };
 
         this.md.core.ruler.after('inline', 'confluence_task_list', (state) => {
             annotateTaskListTokens(state.tokens);

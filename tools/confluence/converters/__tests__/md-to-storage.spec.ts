@@ -120,4 +120,46 @@ describe('MarkdownToStorageConverter', () => {
         expect(storage).toContain('<hr');
         expect(storage).toContain('<p>Body</p>');
     });
+
+    it('raw HTML 줄바꿈 태그를 Confluence XHTML self-closing tag로 정규화한다', () => {
+        const markdown = ['| 값 |', '|---|', '| 첫째<br>둘째<BR>셋째<br/>넷째<br />다섯째 |'].join('\n');
+
+        const storage = converter.convert(markdown);
+
+        expect(storage).toContain('<td>첫째<br />둘째<br />셋째<br />넷째<br />다섯째</td>');
+        expect(storage).not.toContain('<br>');
+        expect(storage).not.toContain('<BR>');
+    });
+
+    it('block raw HTML 줄바꿈 태그도 XHTML self-closing tag로 정규화한다', () => {
+        const storage = converter.convert(['앞', '', '<br>', '', '뒤'].join('\n'));
+
+        expect(storage).toContain('<p>앞</p>\n<br />\n<p>뒤</p>');
+    });
+
+    it('code context의 literal br tag는 정규화하지 않는다', () => {
+        const markdown = ['`<br>`', '', '```html', '<br>', '```'].join('\n');
+
+        const storage = converter.convert(markdown);
+
+        expect(storage).toContain('&lt;br&gt;');
+        expect(storage).toContain('<![CDATA[<br>]]>');
+    });
+
+    it('raw HTML token 내부의 CDATA와 comment literal br는 정규화하지 않는다', () => {
+        const markdown = ['<![CDATA[<br>]]>', '', '<!-- literal <br> -->'].join('\n');
+
+        const storage = converter.convert(markdown);
+
+        expect(storage).toContain('<![CDATA[<br>]]>');
+        expect(storage).toContain('<!-- literal <br> -->');
+    });
+
+    it('comment와 CDATA 사이의 실제 raw HTML br tag만 XHTML 형식으로 정규화한다', () => {
+        const markdown = '<div><!-- literal <br> --><br><![CDATA[<br>]]><BR></div>';
+
+        const storage = converter.convert(markdown);
+
+        expect(storage).toBe('<div><!-- literal <br> --><br /><![CDATA[<br>]]><br /></div>');
+    });
 });
