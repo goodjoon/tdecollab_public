@@ -141,8 +141,8 @@ flowchart TB
 | 기능 | 공유 모듈 | 사용하는 interface | 비고 |
 |---|---|---|---|
 | Confluence REST API 호출 | `tools/confluence/api/*` | CLI, TUI, MCP, Obsidian | HTTP 요청/응답 모델 공유 |
-| Markdown → Confluence Storage XML | `tools/confluence/converters/md-to-storage.ts` | CLI, TUI, MCP, Obsidian | frontmatter 제거, image filename decode, image size 복원 등이 모두 여기에 적용 |
-| Confluence Storage XML → Markdown | `tools/confluence/converters/storage-to-md.ts` | CLI, TUI, MCP, Obsidian | list indent, macro, image size metadata 보존 등이 모두 여기에 적용 |
+| Markdown → Confluence Storage XML | `tools/confluence/converters/md-to-storage.ts` | CLI, TUI, MCP, Obsidian | 제목 앵커(Anchor)와 목차 링크 생성, frontmatter 제거, image filename decode, image size 복원 |
+| Confluence Storage XML → Markdown | `tools/confluence/converters/storage-to-md.ts` | CLI, TUI, MCP, Obsidian | 제목 링크 복원, list indent, macro, image size metadata 보존 |
 | 설정/인증/HTTP client | `tools/common/*` | CLI, TUI, MCP, Obsidian 일부 | Obsidian은 UI settings에서 받은 값을 `createConfluenceClient`에 직접 전달 |
 | 페이지 ID/version 유틸 | `tools/confluence/utils/*` | CLI, TUI 중심 | URL page id 정규화, update version 계산 |
 | Storage XML 이미지 참조 추출 | `tools/confluence/utils/image-downloader.ts` | CLI, TUI, MCP, Obsidian 일부 | Obsidian은 download binary/write 부분만 별도 처리하고 참조 추출은 재사용 |

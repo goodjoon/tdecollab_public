@@ -5,6 +5,12 @@
 
 이 플러그인은 `tdecollab` 프로젝트 내의 변환 로직(Markdown ↔ Storage XML)을 재사용하여 독립된(Standalone) 플러그인으로 빌드됩니다.
 
+### 페이지 내부 링크 계약(Contract)
+
+공용 변환기는 같은 문서의 제목으로 향하는 `[항목](#제목)` 링크를 Confluence의 `ac:link ac:anchor`로 변환하고, 대상 제목 바로 앞에 `anchor` 매크로(Macro)를 생성한다. 제목 식별자는 표시 텍스트를 기준으로 생성하며 중복 시 접미사로 구분한다. 제목과 일치하지 않는 링크와 다른 문서로 향하는 링크는 기존 방식으로 유지한다. 다운로드 시 제목에서 다시 만들 수 있는 앵커와 링크를 Markdown으로 복원하여 재업로드 후에도 연결을 유지한다. 제목에서 파생되지 않은 사용자 정의 앵커는 기존 다운로드 동작을 따른다.
+
+설계 및 검증 근거는 [목차 내부 링크 수정 기록](../plans/2026-11-21-001-obsidian-toc-anchor-fix.md)에 남긴다.
+
 ## 2. Architecture & Tech Stack
 - **위치**: `packages/obsidian-plugin` 하위 프로젝트로 추가. (Monorepo 구조 활용)
 - **빌드**: `tdecollab`의 `tools/confluence` 코드 및 API 로직을 번들링 (Desktop-only 타겟, Node.js 환경 의존성 포함). 빌드 도구로는 Obsidian 커뮤니티 표준인 `esbuild` 혹은 기존에 사용하는 `tsup` 활용.

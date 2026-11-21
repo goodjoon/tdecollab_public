@@ -1,6 +1,7 @@
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { createRequire } from 'node:module';
+import { createHeadingSlugger } from './heading-links.js';
 
 export interface JiraIssueInfo {
     summary: string;
@@ -35,6 +36,30 @@ function escapeHtmlAttribute(value: string): string {
         .replace(/"/g, '&quot;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+}
+
+function removeRegenerableHeadingAnchors(document: Document): Set<string> {
+    const macroSelector = '[data-macro-name-tag][data-macro-name="anchor"]';
+    const names = new Set<string>();
+    const headingSlug = createHeadingSlugger();
+
+    for (const heading of Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
+        const macros = Array.from(heading.querySelectorAll(macroSelector));
+        const title = heading.cloneNode(true) as Element;
+        title.querySelectorAll(macroSelector).forEach(macro => macro.remove());
+        title.querySelectorAll('img').forEach(image => image.replaceWith(image.alt));
+        const slug = headingSlug(title.textContent || '');
+        const preceding = heading.previousElementSibling;
+        if (preceding?.matches(macroSelector)) macros.push(preceding);
+
+        for (const macro of macros) {
+            const name = macro.querySelector('[data-macro-param-name=""]')?.textContent;
+            if (!name || name !== slug) continue;
+            names.add(name);
+            macro.remove();
+        }
+    }
+    return names;
 }
 
 function escapeMarkdownImageText(value: string): string {
@@ -319,10 +344,13 @@ export class StorageToMarkdownConverter {
         // 1. Confluence 전용 태그를 표준 HTML 태그로 치환 (JSDOM 호환성)
         // CDATA 섹션을 텍스트로 보존하기 위해 임시 치환
         let processedHtml = storageHtml
-            .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, (match, p1) => {
-                return `__CDATA_START__${p1}__CDATA_END__`;
+            .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, (_match, text: string) => {
+                return `__CDATA_START__${escapeHtmlAttribute(text)}__CDATA_END__`;
             })
-            .replace(/<ac:structured-macro\s+ac:name="([^"]*)"/gi, '<div data-macro-name-tag data-macro-name="$1"')
+            .replace(/<ac:structured-macro\b([^>]*)>/gi, (_match, attrs: string) => {
+                const name = getXmlAttribute(attrs, 'ac:name') || '';
+                return `<div data-macro-name-tag data-macro-name="${escapeHtmlAttribute(name)}">`;
+            })
             .replace(/<\/ac:structured-macro>/gi, '</div>')
             .replace(/<ac:parameter\s+ac:name="([^"]*)"/gi, '<div data-macro-param-tag data-macro-param-name="$1"')
             .replace(/<\/ac:parameter>/gi, '</div>')
@@ -345,6 +373,28 @@ export class StorageToMarkdownConverter {
 
         // 2. DOM 파싱 (Browser/Node 분기)
         const document = parseHtmlDocument(processedHtml);
+
+        const headingAnchors = removeRegenerableHeadingAnchors(document);
+        // 다운로드 후 다시 생성할 수 있는 같은 페이지의 제목 링크만 변환한다.
+        for (const link of Array.from(document.getElementsByTagName('ac:link'))) {
+            const anchor = link.getAttribute('ac:anchor');
+            if (!anchor || !headingAnchors.has(anchor) || link.getElementsByTagName('ri:page').length ||
+                link.getElementsByTagName('ri:attachment').length) continue;
+            const richBody = link.getElementsByTagName('ac:link-body')[0];
+            const plainBody = link.getElementsByTagName('ac:plain-text-link-body')[0];
+            if (!richBody && !plainBody) continue;
+
+            const replacement = document.createElement('a');
+            replacement.setAttribute('href', `#${anchor}`);
+            if (richBody) {
+                replacement.append(...Array.from(richBody.childNodes));
+            } else {
+                const label = (plainBody.textContent || '').replace(/__CDATA_START__|__CDATA_END__/g, '');
+                // Markdown에 다시 넣을 때도 라벨의 HTML 구문을 일반 문자로 유지한다.
+                replacement.textContent = escapeHtmlAttribute(label);
+            }
+            link.replaceWith(replacement);
+        }
 
         this.normalizeMalformedConfluenceLists(document);
 

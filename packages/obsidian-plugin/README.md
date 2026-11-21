@@ -6,6 +6,7 @@ Obsidian 노트를 Confluence 페이지로 바로 업로드하거나, Confluence
 - **현재 노트 업로드**: `Confluence: Upload Current Note to Confluence` 명령어를 통해 현재 노트를 Confluence에 업로드합니다.
 - **현재 노트 다운로드**: `Confluence: Download from Confluence (Overwrite)` 명령어를 통해 페이지를 덮어씁니다.
 - 노트의 Frontmatter에 `confluence_page_id`를 자동으로 기록하여 문서를 매핑합니다.
+- `[목차 항목](#제목)` 형태의 페이지 내부 링크는 제목 앵커(Anchor)와 Confluence 내부 링크로 변환합니다. 한글, 절 번호, 인라인 코드(Inline Code), 중복 제목을 지원하며 다운로드 후 재업로드할 때도 연결을 유지합니다.
 
 ## 설치 방법 (BRAT 사용)
 이 플러그인은 현재 베타 릴리즈 상태이므로 **BRAT** 플러그인을 통해 설치하는 것을 권장합니다.

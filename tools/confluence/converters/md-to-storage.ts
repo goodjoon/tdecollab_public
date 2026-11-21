@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import { loadConfluenceConfig } from '../../common/config.js';
+import { annotateHeadingLinks } from './heading-links.js';
 
 // Mermaid 렌더링에 사용하는 Confluence 매크로 이름 (TDE Confluence 기준 고정값)
 const MERMAID_MACRO_NAME = 'mermaid-macro';
@@ -270,6 +271,31 @@ export class MarkdownToStorageConverter {
         this.md.core.ruler.after('inline', 'confluence_task_list', (state) => {
             annotateTaskListTokens(state.tokens);
         });
+
+        this.md.core.ruler.after('inline', 'confluence_heading_links', (state) => {
+            annotateHeadingLinks(state.tokens);
+        });
+
+        this.md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+            const anchor = tokens[idx].meta?.headingAnchor;
+            const macro = anchor
+                ? `<ac:structured-macro ac:name="anchor" ac:schema-version="1"><ac:parameter ac:name="">${escapeXmlAttribute(anchor)}</ac:parameter></ac:structured-macro>`
+                : '';
+            return macro + self.renderToken(tokens, idx, options);
+        };
+
+        this.md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+            const anchor = tokens[idx].meta?.headingAnchor;
+            return anchor
+                ? `<ac:link ac:anchor="${escapeXmlAttribute(anchor)}"><ac:link-body>`
+                : self.renderToken(tokens, idx, options);
+        };
+
+        this.md.renderer.rules.link_close = (tokens, idx, options, env, self) => {
+            return tokens[idx].meta?.headingAnchor
+                ? '</ac:link-body></ac:link>'
+                : self.renderToken(tokens, idx, options);
+        };
 
         this.md.renderer.rules.bullet_list_open = (tokens, idx, options, env, self) => {
             if (tokens[idx].meta?.renderList === false) {
